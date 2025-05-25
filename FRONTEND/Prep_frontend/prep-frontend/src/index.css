@@ -1,0 +1,30 @@
+body {
+  background: linear-gradient(135deg, #e0e7ff 0%, #f8fafc 100%);
+  min-height: 100vh;
+  margin: 0;
+  font-family: 'Roboto', 'Helvetica', 'Arial', sans-serif;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+.MuiPaper-root {
+  border-radius: 18px !important;
+}
+
+.MuiTabs-root {
+  background: #fff;
+  border-radius: 18px 18px 0 0;
+}
+
+.MuiTab-root {
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.MuiContainer-root {
+  padding-top: 40px;
+  padding-bottom: 40px;
+}
