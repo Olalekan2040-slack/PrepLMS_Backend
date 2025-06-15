@@ -243,7 +243,7 @@ export default function ContentManagement() {
           adminAPI.getSubjects(),
           adminAPI.getClassLevels(),
           adminAPI.getVideos(),
-          adminAPI.getCourses()
+          adminAPI.courses.list()
         ]);
 
         setSubjects(subjectsRes.data || []);

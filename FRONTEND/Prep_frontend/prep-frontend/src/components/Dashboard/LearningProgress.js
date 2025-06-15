@@ -23,12 +23,7 @@ import TimerIcon from '@mui/icons-material/Timer';
 import WhatshotIcon from '@mui/icons-material/Whatshot';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import { useNavigate } from 'react-router-dom';
-import {
-  getProgressDashboard,
-  getRecentActivity,
-  getSubjectProgress,
-  getUserProfile,
-} from '../../api';
+import { userAPI, progressAPI } from '../../api';
 
 function ProgressCard({ title, value, color, icon: Icon, subtitle }) {
   return (
@@ -105,62 +100,56 @@ function SubjectProgressBar({ subject }) {
 }
 
 export default function LearningProgress() {
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [overallProgress, setOverallProgress] = useState(null);
   const [recentActivity, setRecentActivity] = useState([]);
   const [subjectProgress, setSubjectProgress] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const navigate = useNavigate();
-  const token = localStorage.getItem('access_token');
 
   useEffect(() => {
     const fetchProgress = async () => {
-      if (!token) {
-        navigate('/auth');
-        return;
-      }
-
       setLoading(true);
       setError(null);
       try {
-        // Check if token is valid by attempting to get user profile
-        await getUserProfile();
-        
-        // Fetch progress dashboard and recent activity in parallel
-        const [progressRes, activityRes] = await Promise.all([
-          getProgressDashboard(token),
-          getRecentActivity(token)
-        ]);
+        // Verify authentication first
+        await userAPI.getProfile();
 
-        console.log('Progress dashboard response:', progressRes.data);
-        console.log('Recent activity response:', activityRes.data);
+        // Fetch progress data
+        const [progressRes, activityRes] = await Promise.all([
+          progressAPI.getDashboard(),
+          progressAPI.getRecentActivity()
+        ]);
 
         setOverallProgress(progressRes.data);
         setRecentActivity(activityRes.data || []);
 
-        // Fetch progress for each subject if subjects are available
-        if (progressRes.data?.subjects?.length > 0) {
-          console.log(`Fetching progress for ${progressRes.data.subjects.length} subjects`);
-          const subjectPromises = progressRes.data.subjects.map(subject =>
-            getSubjectProgress(subject.id, token)
-          );
+        // Fetch progress for each subject
+        if (progressRes.data?.subjects) {
+          const subjectPromises = progressRes.data.subjects.map(async (subject) => {
+            try {
+              const subjectRes = await progressAPI.getSubjectProgress(subject.id);
+              return {
+                ...subject,
+                progress: subjectRes.data
+              };
+            } catch (err) {
+              console.error(`Failed to fetch progress for subject ${subject.id}:`, err);
+              return {
+                ...subject,
+                progress: null
+              };
+            }
+          });
+
           const subjectResults = await Promise.all(subjectPromises);
-          console.log('Subject progress results:', subjectResults.map(res => res.data));
-          setSubjectProgress(subjectResults.map(res => res.data));
-        } else {
-          console.log('No subjects found in progress data');
-          setSubjectProgress([]);
+          setSubjectProgress(subjectResults);
         }
       } catch (err) {
-        console.error('Error fetching progress:', err.response || err);
+        console.error('Error fetching progress:', err);
+        setError(err?.response?.data?.message || 'Failed to load progress data');
         if (err.response?.status === 403) {
-          // Token is invalid or expired
-          localStorage.removeItem('access_token');
           navigate('/auth');
-        } else if (err.response?.status === 404) {
-          setError('Progress data not available. You may need to complete some lessons first.');
-        } else {
-          setError(err?.response?.data?.message || 'Unable to load your learning progress');
         }
       } finally {
         setLoading(false);
@@ -168,29 +157,7 @@ export default function LearningProgress() {
     };
 
     fetchProgress();
-  }, [token, navigate]);
-
-  // Add debugging console logs for render states
-  console.log('Component state:', {
-    hasToken: !!token,
-    loading,
-    error,
-    overallProgress,
-    recentActivity: recentActivity.length,
-    subjectProgress: subjectProgress.length
-  });
-
-  if (!token) {
-    return (
-      <Alert severity="info" action={
-        <Button color="inherit" size="small" onClick={() => navigate('/auth')}>
-          Login
-        </Button>
-      }>
-        Please login to view your learning progress
-      </Alert>
-    );
-  }
+  }, [navigate]);
 
   if (loading) {
     return (

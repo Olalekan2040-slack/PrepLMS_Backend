@@ -1,9 +1,21 @@
 from django.contrib import admin
+from django.contrib.auth.models import Permission, ContentType
+from django.db import IntegrityError
 from .models import EducationLevel, ClassLevel, Subject, VideoLesson, Bookmark, ViewHistory
 
 
+class ContentAdminSite(admin.ModelAdmin):
+    """Base admin class for content management."""
+    def has_module_permission(self, request):
+        """Check if user has content management permission."""
+        return request.user.is_authenticated and (
+            request.user.is_superuser or 
+            request.user.has_perm('content.can_manage_content')
+        )
+
+
 @admin.register(EducationLevel)
-class EducationLevelAdmin(admin.ModelAdmin):
+class EducationLevelAdmin(ContentAdminSite):
     """Admin configuration for EducationLevel model."""
     
     list_display = ('name', 'slug', 'order')
@@ -13,7 +25,7 @@ class EducationLevelAdmin(admin.ModelAdmin):
 
 
 @admin.register(ClassLevel)
-class ClassLevelAdmin(admin.ModelAdmin):
+class ClassLevelAdmin(ContentAdminSite):
     """Admin configuration for ClassLevel model."""
     
     list_display = ('name', 'education_level', 'order')
@@ -24,7 +36,7 @@ class ClassLevelAdmin(admin.ModelAdmin):
 
 
 @admin.register(Subject)
-class SubjectAdmin(admin.ModelAdmin):
+class SubjectAdmin(ContentAdminSite):
     """Admin configuration for Subject model."""
     
     list_display = ('name', 'slug')
@@ -51,32 +63,42 @@ class BookmarkInline(admin.TabularInline):
 
 
 @admin.register(VideoLesson)
-class VideoLessonAdmin(admin.ModelAdmin):
+class VideoLessonAdmin(ContentAdminSite):
     """Admin configuration for VideoLesson model."""
     
-    list_display = ('title', 'subject', 'class_level', 'duration', 'is_free', 'created_at')
-    list_filter = ('subject', 'class_level', 'is_free')
-    prepopulated_fields = {'slug': ('title',)}
+    list_display = ('title', 'subject', 'class_level', 'video_source', 'processing_status', 'created_at')
+    list_filter = ('video_source', 'processing_status', 'subject', 'class_level', 'created_at')
     search_fields = ('title', 'description')
-    ordering = ('subject__name', 'class_level__order', 'order_in_subject')
+    readonly_fields = ('processing_status', 'error_message', 'created_at', 'updated_at')
     inlines = [ViewHistoryInline, BookmarkInline]
+    fieldsets = (
+        (None, {
+            'fields': ('title', 'description', 'subject', 'class_level')
+        }),
+        ('Video Source', {
+            'fields': ('video_source', 'video_id', 'video_file', 'access_token', 'thumbnail')
+        }),
+        ('Status', {
+            'fields': ('processing_status', 'error_message', 'created_at', 'updated_at')
+        }),
+    )
+
+    def save_model(self, request, obj, form, change):
+        """Override save method to set initial processing status."""
+        if not change:  # Only for new objects
+            obj.processing_status = 'pending'
+        super().save_model(request, obj, form, change)
 
 
-@admin.register(Bookmark)
-class BookmarkAdmin(admin.ModelAdmin):
-    """Admin configuration for Bookmark model."""
-    
-    list_display = ('user', 'video', 'created_at')
-    list_filter = ('created_at',)
-    search_fields = ('user__email', 'video__title')
-    date_hierarchy = 'created_at'
-
-
-@admin.register(ViewHistory)
-class ViewHistoryAdmin(admin.ModelAdmin):
-    """Admin configuration for ViewHistory model."""
-    
-    list_display = ('user', 'video', 'watched_duration', 'is_completed', 'updated_at')
-    list_filter = ('is_completed', 'updated_at')
-    search_fields = ('user__email', 'video__title')
-    date_hierarchy = 'updated_at'
+def create_content_management_permission():
+    """Create the content management permission if it doesn't exist."""
+    try:
+        content_type = ContentType.objects.get_for_model(VideoLesson)
+        Permission.objects.get_or_create(
+            codename='can_manage_content',
+            name='Can manage content',
+            content_type=content_type,
+        )
+    except IntegrityError:
+        # Permission already exists, nothing to do
+        pass

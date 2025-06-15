@@ -8,7 +8,7 @@ import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import { useNavigate } from 'react-router-dom';
-import { getUserBookmarkedVideos, removeBookmark } from '../../api';
+import { contentAPI } from '../../api';
 
 function BookmarkCard({ video, onPlay, onRemove }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -115,7 +115,7 @@ export default function BookmarkedLessons() {
     setLoading(true);
     setError(null);
     try {
-      const response = await getUserBookmarkedVideos();
+      const response = await contentAPI.getBookmarkedVideos();
       setBookmarks(response.data || []);
     } catch (err) {
       console.error('Error fetching bookmarks:', err);
@@ -138,7 +138,7 @@ export default function BookmarkedLessons() {
 
   const handleRemoveBookmark = async (videoId) => {
     try {
-      await removeBookmark(videoId);
+      await contentAPI.removeBookmark(videoId);
       setBookmarks(prev => prev.filter(bookmark => bookmark.id !== videoId));
     } catch (err) {
       console.error('Error removing bookmark:', err);

@@ -31,8 +31,7 @@ const getMenuItems = (isAuthenticated) => [
   { label: 'About Prep', link: '/about', icon: <InfoIcon /> },
   { label: 'Prep Tutor', link: '/tutor', icon: <SchoolIcon /> },
   { label: 'Prep Practice Questions', link: '/practice', icon: <QuizIcon />, comingSoon: true },
-  { label: 'Rewards', link: '/rewards', icon: <EmojiEventsIcon /> },
-  { label: 'My Account', link: '/account', icon: <AccountCircleIcon />, protected: true },
+  { label: 'Rewards', link: '/rewards', icon: <EmojiEventsIcon /> },  { label: 'My Account', link: '/account/dashboard', icon: <AccountCircleIcon />, protected: true },
   { label: 'Donate', link: '/donate', icon: <VolunteerActivismIcon /> },
   { label: 'Contact/Support', link: '/contact', icon: <ContactSupportIcon /> },
   ...(isAuthenticated

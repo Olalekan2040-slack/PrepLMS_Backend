@@ -72,9 +72,60 @@ class VideoLesson(models.Model):
     description = models.TextField()
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='videos')
     class_level = models.ForeignKey(ClassLevel, on_delete=models.CASCADE, related_name='videos')
-    video_file = models.FileField(upload_to='videos/')
-    thumbnail = models.ImageField(upload_to='thumbnails/', blank=True, null=True)
-    duration = models.PositiveIntegerField(help_text="Duration in seconds", default=0)
+    
+    VIDEO_SOURCE_CHOICES = (
+        ('youtube', 'YouTube'),
+        ('drive', 'Google Drive'),
+        ('upload', 'Direct Upload')
+    )
+    video_source = models.CharField(
+        max_length=20,
+        choices=VIDEO_SOURCE_CHOICES,
+        default='youtube',
+        help_text="Source of the video content"
+    )
+    video_id = models.CharField(
+        max_length=255,
+        help_text="YouTube video ID or Google Drive file ID",
+        blank=True,
+        null=True
+    )
+    video_file = models.FileField(
+        upload_to='videos/%Y/%m/%d/',
+        blank=True,
+        null=True,
+        help_text="Video file for direct uploads"
+    )
+    access_token = models.CharField(
+        max_length=255,
+        help_text="Access token for private/unlisted videos",
+        blank=True,
+        null=True
+    )
+    thumbnail = models.ImageField(
+        upload_to='thumbnails/%Y/%m/%d/',
+        blank=True,
+        null=True
+    )
+    duration = models.PositiveIntegerField(
+        help_text="Duration in seconds",
+        default=0
+    )
+    processing_status = models.CharField(
+        max_length=20,
+        choices=(
+            ('pending', 'Pending'),
+            ('processing', 'Processing'),
+            ('ready', 'Ready'),
+            ('failed', 'Failed')
+        ),
+        default='pending'
+    )
+    error_message = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Error message if processing failed"
+    )
     is_free = models.BooleanField(default=False)
     order_in_subject = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -83,6 +134,9 @@ class VideoLesson(models.Model):
     class Meta:
         ordering = ['subject__name', 'class_level__order', 'order_in_subject']
         unique_together = ('subject', 'class_level', 'order_in_subject')
+        permissions = [
+            ('can_manage_content', 'Can manage video content')
+        ]
     
     def __str__(self):
         return f"{self.title} - {self.subject} ({self.class_level})"
@@ -91,6 +145,21 @@ class VideoLesson(models.Model):
         if not self.slug:
             self.slug = slugify(self.title)
         super().save(*args, **kwargs)
+    
+    @property
+    def video_url(self):
+        """Get the URL for the video based on its source."""
+        if self.video_source == 'youtube':
+            base_url = 'https://www.youtube.com/embed/'
+            url = f"{base_url}{self.video_id}"
+            if self.access_token:
+                url += f"?access_token={self.access_token}"
+            return url
+        elif self.video_source == 'drive':
+            return f"https://drive.google.com/file/d/{self.video_id}/preview"
+        elif self.video_source == 'upload' and self.video_file:
+            return self.video_file.url
+        return None
 
 
 class Bookmark(models.Model):

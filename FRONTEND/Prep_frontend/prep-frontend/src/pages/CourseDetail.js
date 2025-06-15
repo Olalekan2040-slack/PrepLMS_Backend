@@ -25,16 +25,7 @@ import BookmarkIcon from '@mui/icons-material/Bookmark';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import LockIcon from '@mui/icons-material/Lock';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import { 
-  getCourseById, 
-  getVideosByCourse, 
-  // updateVideoProgress, 
-  getVideoProgress,
-  bookmarkVideo,
-  removeBookmark,
-  getUserBookmarkedVideos,
-  trackProgress
-} from '../api';
+import { contentAPI, progressAPI } from '../api';
 
 function VideoListItem({ video, onSelect, isLocked, progress }) {
   return (
@@ -114,41 +105,42 @@ export default function CourseDetail() {
   setError(null);
   try {
     const [courseRes, videosRes] = await Promise.all([
-      getCourseById(courseId),
-      getVideosByCourse(courseId)
+      contentAPI.getCourseById(courseId),
+      contentAPI.getVideosByCourse(courseId)
     ]);
 
     setCourse(courseRes.data);
-    const videoList = videosRes.data.data || [];
-    setVideos(videoList);
+    setVideos(videosRes.data);
 
-    // Fetch progress and bookmarks if token is available
-    if (token && videoList.length > 0) {
-      const [progressResults, bookmarksRes] = await Promise.all([
-        Promise.all(
-          videoList.map(video =>
-            getVideoProgress(video.id)
-              .then(res => ({ id: video.id, progress: res.data.progress }))
-              .catch(() => ({ id: video.id, progress: 0 }))
-          )
-        ),
-        getUserBookmarkedVideos()
-      ]);
+    // Get progress for each video
+    const progressPromises = videosRes.data.map(async (video) => {
+      try {
+        const progressRes = await progressAPI.getVideoProgress(video.id);
+        return { videoId: video.id, progress: progressRes.data };
+      } catch (error) {
+        console.error(`Failed to fetch progress for video ${video.id}:`, error);
+        return { videoId: video.id, progress: null };
+      }
+    });
 
-      // Map video progress
-      const progressMap = {};
-      progressResults.forEach(({ id, progress }) => {
-        progressMap[id] = progress;
-      });
-      setVideoProgress(progressMap);
-
-      // Map bookmarked videos
-      const bookmarkedSet = new Set(bookmarksRes.data.map(video => video.id));
-      setBookmarkedVideos(bookmarkedSet);
+    // Get bookmarked videos
+    try {
+      const bookmarksRes = await contentAPI.getBookmarkedVideos();
+      setBookmarkedVideos(bookmarksRes.data || []);
+    } catch (error) {
+      console.error('Failed to fetch bookmarks:', error);
     }
 
-    if (videoList.length > 0) {
-      setSelectedVideo(videoList[0]);
+    // Wait for all progress fetches
+    const progressResults = await Promise.all(progressPromises);
+    const progressMap = {};
+    progressResults.forEach(({ videoId, progress }) => {
+      if (progress) progressMap[videoId] = progress;
+    });
+    setVideoProgress(progressMap);
+
+    if (videosRes.data.length > 0) {
+      setSelectedVideo(videosRes.data[0]);
     }
   } catch (err) {
     setError(err?.response?.data?.message || 'Failed to load course content');
@@ -159,22 +151,18 @@ export default function CourseDetail() {
 }, [courseId, token]);
 
   const handleToggleBookmark = async () => {
-    if (!token || !selectedVideo || bookmarkLoading) return;
+    if (!selectedVideo || bookmarkLoading) return;
 
     setBookmarkLoading(true);
     setBookmarkError(null);
 
     try {
       if (bookmarkedVideos.has(selectedVideo.id)) {
-        await removeBookmark(selectedVideo.id, token);
-        setBookmarkedVideos(prev => {
-          const next = new Set(prev);
-          next.delete(selectedVideo.id);
-          return next;
-        });
+        await contentAPI.removeBookmark(selectedVideo.id);
+        setBookmarkedVideos(prev => prev.filter(v => v.id !== selectedVideo.id));
       } else {
-        await bookmarkVideo(selectedVideo.id, token);
-        setBookmarkedVideos(prev => new Set([...prev, selectedVideo.id]));
+        await contentAPI.bookmarkVideo(selectedVideo.id);
+        setBookmarkedVideos(prev => [...prev, selectedVideo]);
       }
     } catch (err) {
       setBookmarkError(err?.response?.data?.message || 'Failed to update bookmark');
@@ -202,18 +190,13 @@ export default function CourseDetail() {
     const currentTime = video.currentTime;
 
     try {
-      // // Update video-specific progress
-      // await updateVideoProgress(selectedVideo.id, {
-      //   progress,
-      //   current_time: currentTime
-      // }, token);
-
       // Track overall learning progress
-      await trackProgress({
-        video: selectedVideo.id,
-        last_position: currentTime,
-        watched_duration: currentTime
-      }, token);
+      await progressAPI.trackProgress({
+        video_id: selectedVideo.id,
+        progress: progress,
+        current_time: currentTime,
+        duration: video.duration
+      });
     } catch (err) {
       console.error('Failed to save video progress:', err);
     }
@@ -221,22 +204,24 @@ export default function CourseDetail() {
 
   const handleVideoSelect = async (video) => {
     setSelectedVideo(video);
-    
-    // If we have a token and this video has saved progress, fetch it
-    if (token) {
-      try {
-        const res = await getVideoProgress(video.id, token);
-        if (res.data.current_time) {
-          // Set the video time to the saved position after the video loads
-          videoRef.current.addEventListener('loadedmetadata', () => {
-            videoRef.current.currentTime = res.data.current_time;
-          }, { once: true });
+    await loadVideoProgress(video);
+  };
+
+  const loadVideoProgress = async (video) => {
+    if (!video) return;
+    try {
+      const res = await progressAPI.getVideoProgress(video.id);
+      if (res.data?.current_time) {
+        const videoElement = videoRef.current;
+        if (videoElement) {
+          videoElement.currentTime = res.data.current_time;
         }
-      } catch (err) {
-        console.error('Failed to fetch video progress:', err);
       }
+    } catch (error) {
+      console.error('Failed to load video progress:', error);
     }
   };
+
   // Set up auto-save interval when a video is selected
   useEffect(() => {
     if (selectedVideo && token) {

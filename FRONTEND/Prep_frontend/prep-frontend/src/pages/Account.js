@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
   Drawer,
@@ -42,16 +43,16 @@ export default function Account() {
   const [selectedTab, setSelectedTab] = React.useState('dashboard');
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const navigate = useNavigate();
+  const location = useLocation();
   const token = localStorage.getItem('access_token');
 
-  if (!token) {
-    return (
-      <Box sx={{ p: 6, textAlign: 'center' }}>
-        <Alert severity="info" sx={{ mb: 2 }}>Please log in to access your account.</Alert>
-        <Button variant="contained" href="/auth">Login</Button>
-      </Box>
-    );
-  }
+  React.useEffect(() => {
+    if (!token) {
+      navigate('/auth', { state: { from: location }, replace: true });
+      return;
+    }
+  }, [token, navigate, location]);
 
   const renderContent = () => {
     switch(selectedTab) {

@@ -1,6 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { getVideos } from '../../api'; // adjust path based on your project structure
-
 import {
   Box,
   Typography,
@@ -24,7 +22,7 @@ import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import WhatshotIcon from '@mui/icons-material/Whatshot';
 import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
-import { getDashboardStats, getActiveVideos, getUserBookmarkedVideos, getWatchHistory, getLearningProgress, getUserProfile, getAllVideos, getFeaturedCourses, bookmarkVideo, removeBookmark } from '../../api';
+import { userAPI, contentAPI } from '../../api';
 import { useNavigate } from 'react-router-dom';
 
 function VideoCarousel({ title, videos, onPlay, onBookmark, bookmarks }) {
@@ -53,7 +51,7 @@ function VideoCarousel({ title, videos, onPlay, onBookmark, bookmarks }) {
               <Typography variant="subtitle1" fontWeight={600} noWrap>{video.title}</Typography>
               <Typography variant="body2" color="text.secondary" noWrap>{video.subject} • {video.class_level}</Typography>
               <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                <Button size="small" startIcon={<PlayCircleOutlineIcon />} onClick={() => onPlay(video)}>
+                <Button size="small" startIcon={<PlayCircleOutlineIcon />} onClick={() => onPlay(video.course_id, video.id)}>
                   Play
                 </Button>
               </Box>
@@ -66,71 +64,98 @@ function VideoCarousel({ title, videos, onPlay, onBookmark, bookmarks }) {
 }
 
 export default function Dashboard() {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+  
+  // State variables
   const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [stats, setStats] = useState(null);
-  const [featuredVideos, setFeaturedVideos] = useState([]);
-  const [continueVideos, setContinueVideos] = useState([]);
   const [bookmarkedVideos, setBookmarkedVideos] = useState([]);
-  const [pointsToday, setPointsToday] = useState(0);
-  const [pointsWeek, setPointsWeek] = useState(0);
-  const [streak, setStreak] = useState(0);
-  const [videosWatched, setVideosWatched] = useState(0);
+  const [featuredCourses, setFeaturedCourses] = useState([]);
+  const [activeVideos, setActiveVideos] = useState([]);
   const [allVideos, setAllVideos] = useState([]);
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('');
   const [browseVideos, setBrowseVideos] = useState([]);
-  const [error, setError] = useState(null);
-  const token = localStorage.getItem('access_token');
-  const navigate = useNavigate();
+  const [pointsToday, setPointsToday] = useState(0);
+  const [pointsWeek, setPointsWeek] = useState(0);
 
+  // Define available subjects and class levels
+  const subjects = ['Mathematics', 'Physics', 'Chemistry', 'Biology', 'English'];
+  const classLevels = ['Class 8', 'Class 9', 'Class 10', 'Class 11', 'Class 12'];
+
+  // Handle bookmark/unbookmark
+  const handleBookmark = async (video) => {
+    try {
+      const isBookmarked = bookmarkedVideos.some(b => b.id === video.id);
+      if (isBookmarked) {
+        await contentAPI.removeBookmark(video.id);
+        setBookmarkedVideos(prev => prev.filter(b => b.id !== video.id));
+      } else {
+        await contentAPI.bookmarkVideo(video.id);
+        setBookmarkedVideos(prev => [...prev, video]);
+      }
+    } catch (err) {
+      console.error('Error toggling bookmark:', err);
+      if (err.response?.status === 403) {
+        localStorage.removeItem('access_token');
+        navigate('/auth');
+      }
+    }
+  };
+
+  const handlePlay = (courseId, videoId) => {
+    navigate(`/course/${courseId}?video=${videoId}`);
+  };
+
+  // Effect to filter videos based on selection
+  useEffect(() => {
+    const filteredVideos = allVideos.filter(video => {
+      const matchesClass = !selectedClass || video.class_level === selectedClass;
+      const matchesSubject = !selectedSubject || video.subject === selectedSubject;
+      return matchesClass && matchesSubject;
+    });
+    setBrowseVideos(filteredVideos);
+  }, [selectedClass, selectedSubject, allVideos]);
+
+  // Effect to load initial data
   useEffect(() => {
     const fetchData = async () => {
-      if (!token) {
-        navigate('/auth');
-        return;
-      }
-
       setLoading(true);
+      setError(null);
       try {
-        // Check if token is valid by attempting to get user profile
-        await getUserProfile();
-
-        const [profileRes, statsRes, featuredRes, continueRes, bookmarksRes, allRes] = await Promise.all([
-          getUserProfile(),
-          getDashboardStats(),
-          getFeaturedCourses(),
-          getActiveVideos(),
-          getUserBookmarkedVideos(),
-          getVideos()
+        const [
+          profileRes,
+          statsRes,
+          featuredRes,
+          activeRes,
+          bookmarksRes,
+          videosRes
+        ] = await Promise.all([
+          userAPI.getProfile(),
+          userAPI.getDashboardStats(),
+          contentAPI.getFeaturedCourses(),
+          contentAPI.getActiveVideos(),
+          contentAPI.getBookmarkedVideos(),
+          contentAPI.getVideos()
         ]);
-        console.log('Dashboard data loaded:', {
-          profile: profileRes.data,
-          stats: statsRes.data,
-          featured: featuredRes.data,
-          continue: continueRes.data,
-          bookmarks: bookmarksRes.data
-        });
+
         setProfile(profileRes.data);
         setStats(statsRes.data);
-        setFeaturedVideos(featuredRes.data || []);
-        setContinueVideos(continueRes.data || []);
+        setPointsToday(statsRes.data?.points_today || 0);
+        setPointsWeek(statsRes.data?.points_week || 0);
+        setFeaturedCourses(featuredRes.data || []);
+        setActiveVideos(activeRes.data || []);
         setBookmarkedVideos(bookmarksRes.data || []);
-        setAllVideos(allRes.data || []);
-        setPointsToday(statsRes.data?.points?.today || 0);
-        setPointsWeek(statsRes.data?.points?.week || 0);
-        setStreak(statsRes.data?.streak?.current_streak_days || 0);
-        setVideosWatched(statsRes.data?.videos_watched || 0);
+        setAllVideos(videosRes.data || []);
+        setBrowseVideos(videosRes.data || []);
       } catch (err) {
-        console.error('Dashboard loading error:', err);
+        console.error('Error loading dashboard:', err);
+        setError(err?.response?.data?.message || 'Failed to load dashboard data');
         if (err.response?.status === 403) {
-          // Token is invalid or expired
           localStorage.removeItem('access_token');
           navigate('/auth');
-        } else {
-          setError(err?.response?.data?.message || 'Failed to load dashboard data');
         }
       } finally {
         setLoading(false);
@@ -138,52 +163,22 @@ export default function Dashboard() {
     };
 
     fetchData();
-  }, [token, navigate]);
-
-  useEffect(() => {
-    // Filter browseVideos by class/subject
-    setBrowseVideos(
-      allVideos.filter(v =>
-        (!selectedClass || v.class_level === selectedClass) &&
-        (!selectedSubject || v.subject === selectedSubject)
-      )
-    );
-  }, [selectedClass, selectedSubject, allVideos]);
-
-  const handlePlay = (video) => {
-    // Implement navigation to video detail
-    window.location.href = `/tutor/course/${video.courseId || video.id}`;
-  };
-  const handleBookmark = async (video) => {
-    try {
-      if (bookmarkedVideos?.some(b => b.id === video.id)) {
-        await removeBookmark(video.id);
-        setBookmarkedVideos(prev => prev.filter(b => b.id !== video.id));
-      } else {
-        await bookmarkVideo(video.id);
-        const bookmark = { ...video, bookmarked_at: new Date().toISOString() };
-        setBookmarkedVideos(prev => [...prev, bookmark]);
-      }
-    } catch (err) {
-      console.error('Error updating bookmark:', err);
-      if (err.response?.status === 403) {
-        localStorage.removeItem('access_token');
-        navigate('/auth');
-      } else {
-        alert(err?.response?.data?.message || 'Failed to update bookmark');
-      }
-    }
-  };
-
-  // Unique class/subject lists for browse
-  const classLevels = [...new Set(allVideos.map(v => v.class_level).filter(Boolean))];
-  const subjects = [...new Set(allVideos.map(v => v.subject).filter(Boolean))];
+  }, [navigate]);
 
   if (loading) {
-    return <Box sx={{ width: '100%', mt: 3, textAlign: 'center' }}><CircularProgress /></Box>;
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
+        <CircularProgress />
+      </Box>
+    );
   }
+
   if (error) {
-    return <Alert severity="error">{error}</Alert>;
+    return (
+      <Box p={3}>
+        <Alert severity="error">{error}</Alert>
+      </Box>
+    );
   }
 
   return (
@@ -201,13 +196,13 @@ export default function Dashboard() {
       {/* Streak */}
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, gap: 1 }}>
         <WhatshotIcon color="warning" />
-        <Typography variant="body2">You are on a <b>{streak}</b> day streak</Typography>
+        <Typography variant="body2">You are on a <b>{stats?.streak?.current_streak_days || 0}</b> day streak</Typography>
       </Box>
       {/* Quick Stats */}
       <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
         <Box sx={{ flex: 1, minWidth: 120, bgcolor: 'background.paper', p: 2, borderRadius: 2, textAlign: 'center' }}>
           <Typography variant="subtitle2">Videos Watched</Typography>
-          <Typography variant="h6" color="primary">{videosWatched}</Typography>
+          <Typography variant="h6" color="primary">{stats?.videos_watched || 0}</Typography>
         </Box>
         <Box sx={{ flex: 1, minWidth: 120, bgcolor: 'background.paper', p: 2, borderRadius: 2, textAlign: 'center' }}>
           <Typography variant="subtitle2">Points Earned</Typography>
@@ -217,7 +212,7 @@ export default function Dashboard() {
       {/* Featured Videos Carousel */}
       <VideoCarousel
         title="Featured Videos"
-        videos={featuredVideos}
+        videos={featuredCourses}
         onPlay={handlePlay}
         onBookmark={handleBookmark}
         bookmarks={bookmarkedVideos}
@@ -225,7 +220,7 @@ export default function Dashboard() {
       {/* Continue Learning Carousel */}
       <VideoCarousel
         title="Continue Learning"
-        videos={continueVideos}
+        videos={activeVideos}
         onPlay={handlePlay}
         onBookmark={handleBookmark}
         bookmarks={bookmarkedVideos}
@@ -285,7 +280,7 @@ export default function Dashboard() {
                 <Typography variant="subtitle1" fontWeight={600} noWrap>{video.title}</Typography>
                 <Typography variant="body2" color="text.secondary" noWrap>{video.subject} • {video.class_level}</Typography>
                 <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                  <Button size="small" startIcon={<PlayCircleOutlineIcon />} onClick={() => handlePlay(video)}>
+                  <Button size="small" startIcon={<PlayCircleOutlineIcon />} onClick={() => handlePlay(video.course_id, video.id)}>
                     Play
                   </Button>
                 </Box>

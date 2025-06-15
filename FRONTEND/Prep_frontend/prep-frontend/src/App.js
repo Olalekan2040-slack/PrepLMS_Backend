@@ -108,8 +108,7 @@ export default function App() {
                 </ProtectedRoute>
               } />
               <Route path="/practice" element={<Practice />} />
-              <Route path="/rewards" element={<Rewards />} />
-              <Route path="/account/*" element={
+              <Route path="/rewards" element={<Rewards />} />              <Route path="/account/*" element={
                 <ProtectedRoute>
                   <Account />
                 </ProtectedRoute>

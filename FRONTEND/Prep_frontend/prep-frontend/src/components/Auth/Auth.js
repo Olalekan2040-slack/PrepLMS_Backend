@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Box, Paper, Tabs, Tab, TextField, Button, Alert, CircularProgress } from '@mui/material';
-import { register, login, verifyOtp, passwordResetRequest, passwordResetConfirm } from '../../api';
+import { authAPI, userAPI, adminAPI } from '../../api';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 function TabPanel(props) {
@@ -45,85 +45,81 @@ export default function Auth() {
     try {
       const formData = new FormData();
       Object.entries(form).forEach(([k, v]) => formData.append(k, v));
-      await register(formData);
+      await authAPI.register(formData);
       setMessage({ type: 'success', text: 'Registration successful! Please verify OTP.' });
       setTab(1);
-    } catch (err) {
-      setMessage({ type: 'error', text: err?.response?.data?.message || 'Registration failed.' });
+    } catch (error) {
+      setMessage({ type: 'error', text: error.response?.data?.detail || 'Registration failed' });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  };
-
-  // Login
+  };  // Login
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
     setMessage(null);
     try {
-      const response = await login(form);
-      localStorage.setItem('access_token', response.data.token);
+      const response = await authAPI.login(form);
+      localStorage.setItem('access_token', response.data.access);
+      localStorage.setItem('refresh_token', response.data.refresh);
       
-      // Check if user is admin
-      // try {
-      //   await adminAPI.getAdminRoles();
-      //   navigate('/admin');
-      //   return;
-      // } catch (adminErr) {
-      //   // Not an admin, continue with normal user flow
-      // }
+      const userProfile = await userAPI.getProfile();
+      localStorage.setItem('user_profile', JSON.stringify(userProfile.data));
       
-      // Regular user flow
-      navigate('/tutor/dashboard');
-    } catch (err) {
-      setMessage({ type: 'error', text: err?.response?.data?.message || 'Login failed.' });
+      const redirect = new URLSearchParams(location.search).get('redirect') || '/';
+      navigate(redirect, { replace: true });
+    } catch (error) {
+      setMessage({ type: 'error', text: error.response?.data?.detail || 'Login failed' });
     } finally {
       setLoading(false);
     }
   };
 
-  // OTP
-  const handleOtp = async (e) => {
+  // OTP Verification
+  const handleVerifyOtp = async (e) => {
     e.preventDefault();
     setLoading(true);
     setMessage(null);
     try {
-      await verifyOtp(form);
-      setMessage({ type: 'success', text: 'OTP verified! You can now login.' });
-      setTab(1);
-    } catch (err) {
-      setMessage({ type: 'error', text: err?.response?.data?.message || 'OTP verification failed.' });
+      await authAPI.verifyOtp(form);
+      setMessage({ type: 'success', text: 'OTP verified! Please login.' });
+      setTab(0);
+    } catch (error) {
+      setMessage({ type: 'error', text: error.response?.data?.detail || 'OTP verification failed' });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   // Password Reset Request
-  const handleResetRequest = async (e) => {
+  const handlePasswordResetRequest = async (e) => {
     e.preventDefault();
     setLoading(true);
     setMessage(null);
     try {
-      await passwordResetRequest(form);
-      setMessage({ type: 'success', text: 'OTP sent for password reset.' });
-      setTab(4);
-    } catch (err) {
-      setMessage({ type: 'error', text: err?.response?.data?.message || 'Request failed.' });
+      await authAPI.passwordResetRequest(form);
+      setMessage({ type: 'success', text: 'Password reset link sent to your email!' });
+    } catch (error) {
+      setMessage({ type: 'error', text: error.response?.data?.detail || 'Password reset request failed' });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   // Password Reset Confirm
-  const handleResetConfirm = async (e) => {
+  const handlePasswordResetConfirm = async (e) => {
     e.preventDefault();
     setLoading(true);
     setMessage(null);
     try {
-      await passwordResetConfirm(form);
-      setMessage({ type: 'success', text: 'Password reset successful! You can now login.' });
-      setTab(1);
-    } catch (err) {
-      setMessage({ type: 'error', text: err?.response?.data?.message || 'Reset failed.' });
+      await authAPI.passwordResetConfirm(form);
+      setMessage({ type: 'success', text: 'Password reset successful! Please login.' });
+      setTab(0);
+    } catch (error) {
+      setMessage({ type: 'error', text: error.response?.data?.detail || 'Password reset failed' });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
@@ -157,7 +153,7 @@ export default function Auth() {
         </form>
       </TabPanel>
       <TabPanel value={tab} index={2}>
-        <form onSubmit={handleOtp}>
+        <form onSubmit={handleVerifyOtp}>
           <TextField label="Email or Phone" name="email_or_phone" fullWidth margin="normal" onChange={handleChange} required />
           <TextField label="OTP" name="otp" fullWidth margin="normal" onChange={handleChange} required />
           <Button type="submit" variant="contained" color="primary" fullWidth disabled={loading} sx={{ mt: 2 }}>
@@ -166,7 +162,7 @@ export default function Auth() {
         </form>
       </TabPanel>
       <TabPanel value={tab} index={3}>
-        <form onSubmit={handleResetRequest}>
+        <form onSubmit={handlePasswordResetRequest}>
           <TextField label="Email or Phone" name="email_or_phone" fullWidth margin="normal" onChange={handleChange} required />
           <Button type="submit" variant="contained" color="primary" fullWidth disabled={loading} sx={{ mt: 2 }}>
             {loading ? <CircularProgress size={24} /> : 'Send OTP'}
@@ -174,7 +170,7 @@ export default function Auth() {
         </form>
       </TabPanel>
       <TabPanel value={tab} index={4}>
-        <form onSubmit={handleResetConfirm}>
+        <form onSubmit={handlePasswordResetConfirm}>
           <TextField label="Email or Phone" name="email_or_phone" fullWidth margin="normal" onChange={handleChange} required />
           <TextField label="OTP" name="otp" fullWidth margin="normal" onChange={handleChange} required />
           <TextField label="New Password" name="new_password" type="password" fullWidth margin="normal" onChange={handleChange} required />
@@ -183,7 +179,6 @@ export default function Auth() {
             {loading ? <CircularProgress size={24} /> : 'Reset Password'}
           </Button>
         </form>
-      </TabPanel>
-    </Paper>
+      </TabPanel>    </Paper>
   );
 }

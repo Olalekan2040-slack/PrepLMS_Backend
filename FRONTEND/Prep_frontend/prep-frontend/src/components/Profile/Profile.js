@@ -16,7 +16,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Cancel';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
-import { getUserProfile, updateProfile } from '../../api';
+import { userAPI } from '../../api';
 
 export default function Profile() {
   const [profile, setProfile] = useState(null);
@@ -30,7 +30,7 @@ export default function Profile() {
   const fetchProfile = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await getUserProfile(token);
+      const res = await userAPI.getProfile();
       setProfile(res.data);
       setForm(res.data);
     } catch (err) {
@@ -65,7 +65,7 @@ export default function Profile() {
       Object.entries(form).forEach(([k, v]) => {
         if (v !== null && v !== undefined) formData.append(k, v);
       });
-      await updateProfile(formData, token);
+      await userAPI.updateProfile(formData, token);
       setMessage({ type: 'success', text: 'Profile updated successfully!' });
       setEdit(false);
       fetchProfile();

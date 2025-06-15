@@ -15,12 +15,11 @@ export default function AdminRoutes() {
   const [adminRole, setAdminRole] = useState(null);
   const [error, setError] = useState(null);
   const token = localStorage.getItem('access_token');
-  useEffect(() => {
-    const verifyAdmin = async () => {
+  useEffect(() => {    const verifyAdmin = async () => {
       try {
-        // Use the adminAPI from our api.js file
-        const { data } = await adminAPI.getAdminRoles();
-        setAdminRole(data.role);
+        // Get the current admin's info
+        const { data: adminData } = await adminAPI.getCurrentAdmin();
+        setAdminRole(adminData.role);
         setError(null);
       } catch (err) {
         console.error('Admin verification failed:', err);

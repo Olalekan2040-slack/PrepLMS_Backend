@@ -1,11 +1,13 @@
 from django.urls import path
 from .views import (
     EducationLevelListView, ClassLevelListView, SubjectListView,
-    VideoLessonListView, VideoLessonDetailView, CourseListView, CourseDetailView, CourseBySubjectView, CourseByClassView, FeaturedCourseListView,
+    VideoLessonListView, VideoLessonDetailView, VideoLessonCreateView, VideoLessonUpdateView, VideoLessonDeleteView,
+    CourseListView, CourseDetailView, CourseBySubjectView, CourseByClassView, FeaturedCourseListView,
     VideoListView, VideoDetailView, VideosByCourseView, VideoProgressView, VideoProgressDetailView, VideoBookmarkView,
     ProgressDashboardView, CourseProgressView, SubjectProgressView, TrackLearningView, RecentActivityView,
     AnalyticsPerformanceView, AnalyticsTimeSpentView, AnalyticsSubjectStrengthsView, AnalyticsRecommendationsView,
-    AdminCourseListCreateView, AdminCourseDetailView, AdminVideoListCreateView, AdminVideoDetailView, AdminSubjectListCreateView, AdminSubjectDetailView, AdminClassLevelListView, FreeSampleVideoListView, VideoBookmarksListView, VideoCurrentView
+    AdminCourseListCreateView, AdminCourseDetailView, AdminVideoListCreateView, AdminVideoDetailView, AdminSubjectListCreateView, AdminSubjectDetailView, AdminClassLevelListView, FreeSampleVideoListView, VideoBookmarksListView, VideoCurrentView,
+    AdminVideoUploadView
 )
 
 urlpatterns = [
@@ -14,6 +16,9 @@ urlpatterns = [
     path('subjects/', SubjectListView.as_view(), name='subject-list'),
     path('lessons/', VideoLessonListView.as_view(), name='lesson-list'),
     path('lessons/<slug:slug>/', VideoLessonDetailView.as_view(), name='lesson-detail'),
+    path('lessons/create/', VideoLessonCreateView.as_view(), name='lesson-create'),
+    path('lessons/<slug:slug>/update/', VideoLessonUpdateView.as_view(), name='lesson-update'),
+    path('lessons/<slug:slug>/delete/', VideoLessonDeleteView.as_view(), name='lesson-delete'),
     path('courses/', CourseListView.as_view(), name='course-list'),
     path('courses/<int:id>/', CourseDetailView.as_view(), name='course-detail'),
     path('courses/subject/<slug:subject>/', CourseBySubjectView.as_view(), name='course-by-subject'),
@@ -40,6 +45,7 @@ urlpatterns = [
     path('analytics/recommendations/', AnalyticsRecommendationsView.as_view(), name='analytics-recommendations'),
     path('admin/courses/', AdminCourseListCreateView.as_view(), name='admin-course-list-create'),
     path('admin/courses/<int:id>/', AdminCourseDetailView.as_view(), name='admin-course-detail'),
+    path('admin/videos/upload/', AdminVideoUploadView.as_view(), name='admin-video-upload'),
     path('admin/videos/', AdminVideoListCreateView.as_view(), name='admin-video-list-create'),
     path('admin/videos/<int:id>/', AdminVideoDetailView.as_view(), name='admin-video-detail'),
     path('admin/subjects/', AdminSubjectListCreateView.as_view(), name='admin-subject-list-create'),

@@ -21,7 +21,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
 import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
-import { getCourses, getCoursesByClass, getFeaturedCourses } from '../api';
+import { contentAPI } from '../api';
 import { useNavigate } from 'react-router-dom';
 
 const classLevels = ['JSS1', 'JSS2', 'JSS3', 'SS1', 'SS2', 'SS3'];
@@ -129,20 +129,20 @@ export default function Tutor() {
         let response;
         switch (tab) {
           case 0: // All Courses
-            response = await getCourses();
+            response = await contentAPI.getCourses();
             break;
           case 1: // By Class
             if (selectedClass !== 'all') {
-              response = await getCoursesByClass(selectedClass.toLowerCase());
+              response = await contentAPI.getCoursesByClass(selectedClass.toLowerCase());
             } else {
-              response = await getCourses();
+              response = await contentAPI.getCourses();
             }
             break;
           case 2: // Featured
-            response = await getFeaturedCourses();
+            response = await contentAPI.getFeaturedCourses();
             break;
           default:
-            response = await getCourses();
+            response = await contentAPI.getCourses();
         }
         setCourses(response.data.data || []);
       } catch (err) {

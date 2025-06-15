@@ -1,12 +1,23 @@
 from django.shortcuts import render, get_object_or_404
+import random
+import re
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from django.core.files.storage import default_storage
+from django.conf import settings
+import os
 from .models import EducationLevel, ClassLevel, Subject, VideoLesson, ViewHistory
 from .serializers import (
-    EducationLevelSerializer, ClassLevelSerializer, SubjectSerializer, VideoLessonSerializer, VideoProgressSerializer
+    EducationLevelSerializer, ClassLevelSerializer, SubjectSerializer, 
+    VideoLessonSerializer, VideoProgressSerializer
 )
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.views import APIView
+
+class IsContentAdmin(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.is_staff and request.user.has_perm('content.can_manage_content')
 
 class EducationLevelListView(generics.ListAPIView):
     queryset = EducationLevel.objects.all()
@@ -26,7 +37,7 @@ class SubjectListView(generics.ListAPIView):
 class VideoLessonListView(generics.ListAPIView):
     queryset = VideoLesson.objects.all()
     serializer_class = VideoLessonSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -44,46 +55,247 @@ class VideoLessonListView(generics.ListAPIView):
 class VideoLessonDetailView(generics.RetrieveAPIView):
     queryset = VideoLesson.objects.all()
     serializer_class = VideoLessonSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [IsAuthenticated]
     lookup_field = 'slug'
+
+class VideoLessonCreateView(generics.CreateAPIView):
+    queryset = VideoLesson.objects.all()
+    serializer_class = VideoLessonSerializer
+    permission_classes = [IsContentAdmin]
+    parser_classes = (MultiPartParser, FormParser, JSONParser)
+
+    def create(self, request, *args, **kwargs):
+        try:
+            # Get video source from request
+            video_source = request.data.get('video_source')
+            
+            if video_source == 'upload':
+                # Handle direct file upload
+                if 'video_file' not in request.FILES:
+                    return Response(
+                        {'error': 'No video file provided'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                
+                video_file = request.FILES['video_file']
+                # Validate file size (2GB limit)
+                if video_file.size > 2 * 1024 * 1024 * 1024:  # 2GB in bytes
+                    return Response(
+                        {'error': 'File size cannot exceed 2GB'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                # Save file with unique name
+                file_name = default_storage.save(
+                    f'videos/{video_file.name}',
+                    video_file
+                )
+                request.data['video_id'] = file_name
+
+            elif video_source == 'drive':
+                # Handle Google Drive link
+                video_id = request.data.get('video_id')
+                if not video_id:
+                    return Response(
+                        {'error': 'No Google Drive link provided'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                
+                # Extract file ID from Google Drive link if full URL is provided
+                drive_patterns = [
+                    r'drive\.google\.com/file/d/([\w-]+)',
+                    r'drive\.google\.com/open\?id=([\w-]+)'
+                ]
+                
+                for pattern in drive_patterns:
+                    match = re.search(pattern, video_id)
+                    if match:
+                        video_id = match.group(1)
+                        break
+                
+                request.data['video_id'] = video_id
+
+            elif video_source == 'youtube':
+                # Handle YouTube link
+                video_id = request.data.get('video_id')
+                if not video_id:
+                    return Response(
+                        {'error': 'No YouTube URL provided'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                
+                # Extract video ID from YouTube URL if full URL is provided
+                youtube_patterns = [
+                    r'youtube\.com/watch\?v=([\w-]+)',
+                    r'youtu\.be/([\w-]+)'
+                ]
+                
+                for pattern in youtube_patterns:
+                    match = re.search(pattern, video_id)
+                    if match:
+                        video_id = match.group(1)
+                        break
+                
+                request.data['video_id'] = video_id
+
+            else:
+                return Response(
+                    {'error': 'Invalid video source'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Create the video lesson
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+
+            headers = self.get_success_headers(serializer.data)
+            return Response(
+                serializer.data,
+                status=status.HTTP_201_CREATED,
+                headers=headers
+            )
+
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+class VideoLessonUpdateView(generics.UpdateAPIView):
+    queryset = VideoLesson.objects.all()
+    serializer_class = VideoLessonSerializer
+    permission_classes = [IsContentAdmin]
+    parser_classes = (MultiPartParser, FormParser, JSONParser)
+
+    def update(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            video_source = request.data.get('video_source', instance.video_source)
+
+            if video_source == 'upload' and 'video_file' in request.FILES:
+                # Delete old video file if it exists
+                if instance.video_id and default_storage.exists(instance.video_id):
+                    default_storage.delete(instance.video_id)
+
+                # Save new video file
+                video_file = request.FILES['video_file']
+                if video_file.size > 2 * 1024 * 1024 * 1024:  # 2GB limit
+                    return Response(
+                        {'error': 'File size cannot exceed 2GB'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                file_name = default_storage.save(
+                    f'videos/{video_file.name}',
+                    video_file
+                )
+                request.data['video_id'] = file_name
+
+            elif video_source == 'drive':
+                video_id = request.data.get('video_id', instance.video_id)
+                if video_id:
+                    # Extract file ID from Google Drive link if full URL is provided
+                    drive_patterns = [
+                        r'drive\.google\.com/file/d/([\w-]+)',
+                        r'drive\.google\.com/open\?id=([\w-]+)'
+                    ]
+                    
+                    for pattern in drive_patterns:
+                        match = re.search(pattern, video_id)
+                        if match:
+                            video_id = match.group(1)
+                            break
+                    
+                    request.data['video_id'] = video_id
+
+            elif video_source == 'youtube':
+                video_id = request.data.get('video_id', instance.video_id)
+                if video_id:
+                    # Extract video ID from YouTube URL if full URL is provided
+                    youtube_patterns = [
+                        r'youtube\.com/watch\?v=([\w-]+)',
+                        r'youtu\.be/([\w-]+)'
+                    ]
+                    
+                    for pattern in youtube_patterns:
+                        match = re.search(pattern, video_id)
+                        if match:
+                            video_id = match.group(1)
+                            break
+                    
+                    request.data['video_id'] = video_id
+
+            # Update the video lesson
+            serializer = self.get_serializer(instance, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+
+            return Response(serializer.data)
+
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    def perform_destroy(self, instance):
+        # Delete the video file if it exists
+        if instance.video_source == 'upload' and instance.video_id:
+            if default_storage.exists(instance.video_id):
+                default_storage.delete(instance.video_id)
+        super().perform_destroy(instance)
+
+class VideoLessonDeleteView(generics.DestroyAPIView):
+    queryset = VideoLesson.objects.all()
+    serializer_class = VideoLessonSerializer
+    permission_classes = [IsContentAdmin]
 
 class CourseListView(generics.ListAPIView):
     queryset = Subject.objects.all()
     serializer_class = SubjectSerializer
+    permission_classes = [IsAuthenticated]
 
 class CourseDetailView(generics.RetrieveAPIView):
     queryset = Subject.objects.all()
     serializer_class = SubjectSerializer
+    permission_classes = [IsAuthenticated]
     lookup_field = 'id'
 
 class CourseBySubjectView(generics.ListAPIView):
     serializer_class = SubjectSerializer
+    permission_classes = [IsAuthenticated]
     def get_queryset(self):
         subject = self.kwargs.get('subject')
         return Subject.objects.filter(slug=subject)
 
 class CourseByClassView(generics.ListAPIView):
     serializer_class = SubjectSerializer
+    permission_classes = [IsAuthenticated]
     def get_queryset(self):
         class_level = self.kwargs.get('class_level')
         return Subject.objects.filter(videos__class_level__slug=class_level).distinct()
 
 class FeaturedCourseListView(generics.ListAPIView):
     serializer_class = SubjectSerializer
+    permission_classes = [permissions.AllowAny]  # Allow public access to featured courses
     def get_queryset(self):
-        return Subject.objects.filter(videos__is_free=True).distinct()  # or use a 'featured' field if available
+        return Subject.objects.filter(videos__is_free=True).distinct()
 
 class VideoListView(generics.ListAPIView):
     queryset = VideoLesson.objects.all()
     serializer_class = VideoLessonSerializer
+    permission_classes = [IsAuthenticated]
 
 class VideoDetailView(generics.RetrieveAPIView):
     queryset = VideoLesson.objects.all()
     serializer_class = VideoLessonSerializer
+    permission_classes = [IsAuthenticated]
     lookup_field = 'id'
 
 class VideosByCourseView(generics.ListAPIView):
     serializer_class = VideoLessonSerializer
+    permission_classes = [IsAuthenticated]
     def get_queryset(self):
         course_id = self.kwargs.get('course_id')
         return VideoLesson.objects.filter(subject_id=course_id)
@@ -251,6 +463,57 @@ class AdminVideoListCreateView(generics.ListCreateAPIView):
     queryset = VideoLesson.objects.all()
     serializer_class = VideoLessonSerializer
     permission_classes = [IsSuperAdmin|IsContentAdmin]
+    parser_classes = (MultiPartParser, FormParser)
+    
+    def create(self, request, *args, **kwargs):
+        try:
+            print("Received video data:", request.data)
+            
+            # Handle file upload
+            video_file = request.FILES.get('video_file')
+            if video_file:
+                request.data['video_source'] = 'local'
+                request.data['video_id'] = ''
+            
+            # Handle YouTube URL
+            youtube_url = request.data.get('youtube_url')
+            if youtube_url:
+                # Extract video ID from YouTube URL
+                video_id = self.extract_youtube_id(youtube_url)
+                if not video_id:
+                    return Response(
+                        {'detail': 'Invalid YouTube URL'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                request.data['video_source'] = 'youtube'
+                request.data['video_id'] = video_id
+            
+            serializer = self.get_serializer(data=request.data)
+            if not serializer.is_valid():
+                print("Validation errors:", serializer.errors)
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                
+            video = serializer.save()
+            print("Video created successfully:", video)
+            return Response(
+                VideoLessonSerializer(video).data,
+                status=status.HTTP_201_CREATED
+            )
+        except Exception as e:
+            print("Error creating video:", str(e))
+            return Response(
+                {'detail': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    
+    def extract_youtube_id(self, url):
+        import re
+        # Extract video ID from various YouTube URL formats
+        youtube_regex = (
+            r'(https?://)?(www\.)?(youtube|youtu|youtube-nocookie)\.(com|be)/'
+            r'(watch\?v=|embed/|v/|.+\?v=)?([^&=%\?]{11})')
+        match = re.match(youtube_regex, url)
+        return match.group(6) if match else None
 
 class AdminVideoDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = VideoLesson.objects.all()
@@ -273,13 +536,6 @@ class AdminClassLevelListView(generics.ListAPIView):
     queryset = ClassLevel.objects.all()
     serializer_class = ClassLevelSerializer
     permission_classes = [IsSuperAdmin|IsContentAdmin]
-
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from .models import VideoLesson
-from .serializers import VideoLessonSerializer
-import random
 
 class FreeSampleVideoListView(APIView):
     def get(self, request):
@@ -308,3 +564,40 @@ class VideoCurrentView(APIView):
             data = VideoLessonSerializer(last_history.video).data
             return Response(data)
         return Response({}, status=204)
+
+class AdminVideoUploadView(generics.CreateAPIView):
+    queryset = VideoLesson.objects.all()
+    serializer_class = VideoLessonSerializer
+    permission_classes = [IsSuperAdmin|IsContentAdmin]
+    parser_classes = (MultiPartParser, FormParser)
+
+    def create(self, request, *args, **kwargs):
+        try:
+            # Create a mutable copy of request.data
+            data = request.data.copy()
+            
+            # Handle file upload
+            if data.get('video_source') == 'file':
+                if 'video_file' not in request.FILES:
+                    return Response(
+                        {'video_file': 'No video file uploaded.'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                data['video_file'] = request.FILES['video_file']
+            
+            # Create serializer with the data
+            serializer = self.get_serializer(data=data)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            
+            headers = self.get_success_headers(serializer.data)
+            return Response(
+                serializer.data,
+                status=status.HTTP_201_CREATED,
+                headers=headers
+            )
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )

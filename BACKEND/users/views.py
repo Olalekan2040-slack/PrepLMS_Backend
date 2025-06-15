@@ -182,3 +182,18 @@ class AdminRolesView(APIView):
             {"key": "super_admin", "label": "Super Admin"},
             {"key": "content_admin", "label": "Content Admin"}
         ])
+
+class AdminProfileView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get(self, request):
+        user = request.user
+        if user.is_superuser or user.groups.filter(name__in=['Super Admin', 'Content Admin']).exists():
+            role = 'super_admin' if user.is_superuser or user.groups.filter(name='Super Admin').exists() else 'content_admin'
+            return Response({
+                'id': user.id,
+                'email': user.email,
+                'role': role,
+                'is_active': user.is_active
+            })
+        return Response({'detail': 'Not authorized'}, status=403)
