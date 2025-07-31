@@ -61,189 +61,196 @@ class Command(BaseCommand):
             )
             subjects[name] = subject
 
-        # Sample YouTube video data (using educational videos)
+        # Sample YouTube video data (using real educational videos)
         sample_videos = [
-            # Mathematics
+            # Physics
             {
-                'title': 'Introduction to Basic Addition',
-                'description': 'Learn the fundamentals of addition with simple examples and practice problems.',
+                'title': 'Basic Introduction to Physics',
+                'description': 'Comprehensive introduction to physics concepts and fundamentals.',
+                'subject': subjects['Physics'],
+                'class_level': class_levels['SSS 1'],
+                'video_source': 'youtube',
+                'video_id': 'b1t41Q3xRM8',
+                'is_free': True,
+                'duration': 1800,
+                'processing_status': 'ready',
+                'order_in_subject': 1
+            },
+            # Chemistry
+            {
+                'title': 'Introduction to Chemistry – Online Chemistry Course',
+                'description': 'Complete introduction to chemistry for beginners and advanced learners.',
+                'subject': subjects['Chemistry'],
+                'class_level': class_levels['SSS 1'],
+                'video_source': 'youtube',
+                'video_id': 'k3rRrl9J2F4',
+                'is_free': True,
+                'duration': 2400,
+                'processing_status': 'ready',
+                'order_in_subject': 1
+            },
+            # Biology
+            {
+                'title': 'Reproduction in Organisms (Senior Secondary)',
+                'description': 'Learn about reproduction processes in living organisms.',
+                'subject': subjects['Biology'],
+                'class_level': class_levels['SSS 2'],
+                'video_source': 'youtube',
+                'video_id': 'fNlb4GiO8cI',
+                'is_free': True,
+                'duration': 1200,
+                'processing_status': 'ready',
+                'order_in_subject': 1
+            },
+            # Mathematics - Algebra
+            {
+                'title': 'Master Algebra – High School and Advanced Mathematics',
+                'description': 'Comprehensive algebra course for high school and advanced students.',
+                'subject': subjects['Mathematics'],
+                'class_level': class_levels['SSS 1'],
+                'video_source': 'youtube',
+                'video_id': 'wMMGCrMe7tQ',
+                'is_free': False,
+                'duration': 3600,
+                'processing_status': 'ready',
+                'order_in_subject': 1
+            },
+            # Mathematics - Basic concepts for Primary
+            {
+                'title': 'Introduction to Numbers and Counting',
+                'description': 'Learn basic number recognition and counting skills.',
                 'subject': subjects['Mathematics'],
                 'class_level': class_levels['Primary 1'],
                 'video_source': 'youtube',
-                'video_id': 'dQw4w9WgXcQ',  # Replace with actual educational video IDs
+                'video_id': 'wMMGCrMe7tQ',  # Using same video but for different level
                 'is_free': True,
                 'duration': 600,
                 'processing_status': 'ready',
                 'order_in_subject': 1
             },
             {
-                'title': 'Basic Subtraction Methods',
-                'description': 'Master subtraction techniques with step-by-step explanations.',
-                'subject': subjects['Mathematics'],
-                'class_level': class_levels['Primary 1'],
-                'video_source': 'youtube',
-                'video_id': 'dQw4w9WgXcQ',
-                'is_free': True,
-                'duration': 480,
-                'processing_status': 'ready',
-                'order_in_subject': 2
-            },
-            {
-                'title': 'Multiplication Tables 1-5',
-                'description': 'Learn and memorize multiplication tables from 1 to 5.',
+                'title': 'Basic Addition and Subtraction',
+                'description': 'Master fundamental arithmetic operations.',
                 'subject': subjects['Mathematics'],
                 'class_level': class_levels['Primary 2'],
                 'video_source': 'youtube',
-                'video_id': 'dQw4w9WgXcQ',
-                'is_free': False,
+                'video_id': 'wMMGCrMe7tQ',
+                'is_free': True,
                 'duration': 720,
                 'processing_status': 'ready',
                 'order_in_subject': 1
             },
             # English Language
             {
-                'title': 'Alphabet Recognition and Sounds',
-                'description': 'Learn to recognize letters and their corresponding sounds.',
+                'title': 'English Grammar Fundamentals',
+                'description': 'Learn essential English grammar rules and structures.',
                 'subject': subjects['English Language'],
-                'class_level': class_levels['Primary 1'],
-                'video_source': 'youtube',
-                'video_id': 'dQw4w9WgXcQ',
-                'is_free': True,
-                'duration': 540,
-                'processing_status': 'ready',
-                'order_in_subject': 1
-            },
-            {
-                'title': 'Basic Sentence Formation',
-                'description': 'Learn how to form simple sentences with subjects and verbs.',
-                'subject': subjects['English Language'],
-                'class_level': class_levels['Primary 1'],
-                'video_source': 'youtube',
-                'video_id': 'dQw4w9WgXcQ',
-                'is_free': True,
-                'duration': 420,
-                'processing_status': 'ready',
-                'order_in_subject': 2
-            },
-            {
-                'title': 'Reading Comprehension Basics',
-                'description': 'Develop reading skills and understand simple texts.',
-                'subject': subjects['English Language'],
-                'class_level': class_levels['Primary 2'],
-                'video_source': 'youtube',
-                'video_id': 'dQw4w9WgXcQ',
-                'is_free': False,
-                'duration': 660,
-                'processing_status': 'ready',
-                'order_in_subject': 1
-            },
-            # Science
-            {
-                'title': 'Living and Non-Living Things',
-                'description': 'Learn to distinguish between living and non-living things.',
-                'subject': subjects['Science'],
-                'class_level': class_levels['Primary 1'],
-                'video_source': 'youtube',
-                'video_id': 'dQw4w9WgXcQ',
-                'is_free': True,
-                'duration': 480,
-                'processing_status': 'ready',
-                'order_in_subject': 1
-            },
-            {
-                'title': 'The Human Body - Basic Parts',
-                'description': 'Identify and learn about basic parts of the human body.',
-                'subject': subjects['Science'],
-                'class_level': class_levels['Primary 1'],
-                'video_source': 'youtube',
-                'video_id': 'dQw4w9WgXcQ',
-                'is_free': True,
-                'duration': 600,
-                'processing_status': 'ready',
-                'order_in_subject': 2
-            },
-            {
-                'title': 'Plants and Their Parts',
-                'description': 'Learn about different parts of plants and their functions.',
-                'subject': subjects['Science'],
-                'class_level': class_levels['Primary 2'],
-                'video_source': 'youtube',
-                'video_id': 'dQw4w9WgXcQ',
-                'is_free': False,
-                'duration': 540,
-                'processing_status': 'ready',
-                'order_in_subject': 1
-            },
-            # JSS Level content
-            {
-                'title': 'Introduction to Algebra',
-                'description': 'Learn the basics of algebra and solving simple equations.',
-                'subject': subjects['Mathematics'],
                 'class_level': class_levels['JSS 1'],
                 'video_source': 'youtube',
-                'video_id': 'dQw4w9WgXcQ',
-                'is_free': False,
+                'video_id': 'b1t41Q3xRM8',  # Using physics video as placeholder
+                'is_free': True,
                 'duration': 900,
                 'processing_status': 'ready',
                 'order_in_subject': 1
             },
             {
-                'title': 'Parts of Speech',
-                'description': 'Understand nouns, verbs, adjectives, and other parts of speech.',
+                'title': 'Reading and Comprehension Skills',
+                'description': 'Develop advanced reading and comprehension abilities.',
                 'subject': subjects['English Language'],
-                'class_level': class_levels['JSS 1'],
+                'class_level': class_levels['Primary 3'],
                 'video_source': 'youtube',
-                'video_id': 'dQw4w9WgXcQ',
-                'is_free': False,
+                'video_id': 'b1t41Q3xRM8',
+                'is_free': True,
                 'duration': 780,
                 'processing_status': 'ready',
                 'order_in_subject': 1
             },
+            # Science - General concepts
             {
-                'title': 'Cell Structure and Function',
-                'description': 'Explore the basic structure and function of plant and animal cells.',
-                'subject': subjects['Biology'],
+                'title': 'Introduction to Scientific Method',
+                'description': 'Learn the basics of scientific inquiry and experimentation.',
+                'subject': subjects['Science'],
                 'class_level': class_levels['JSS 1'],
                 'video_source': 'youtube',
-                'video_id': 'dQw4w9WgXcQ',
-                'is_free': False,
-                'duration': 1020,
-                'processing_status': 'ready',
-                'order_in_subject': 1
-            },
-            # SSS Level content
-            {
-                'title': 'Quadratic Equations',
-                'description': 'Master solving quadratic equations using various methods.',
-                'subject': subjects['Mathematics'],
-                'class_level': class_levels['SSS 1'],
-                'video_source': 'youtube',
-                'video_id': 'dQw4w9WgXcQ',
-                'is_free': False,
-                'duration': 1200,
-                'processing_status': 'ready',
-                'order_in_subject': 1
-            },
-            {
-                'title': 'Chemical Bonding',
-                'description': 'Understand ionic and covalent bonding in chemistry.',
-                'subject': subjects['Chemistry'],
-                'class_level': class_levels['SSS 1'],
-                'video_source': 'youtube',
-                'video_id': 'dQw4w9WgXcQ',
-                'is_free': False,
+                'video_id': 'k3rRrl9J2F4',  # Using chemistry video
+                'is_free': True,
                 'duration': 1080,
                 'processing_status': 'ready',
                 'order_in_subject': 1
             },
             {
-                'title': 'Newton\'s Laws of Motion',
-                'description': 'Learn about the three fundamental laws of motion.',
-                'subject': subjects['Physics'],
+                'title': 'Matter and Its Properties',
+                'description': 'Explore different states of matter and their characteristics.',
+                'subject': subjects['Science'],
+                'class_level': class_levels['Primary 4'],
+                'video_source': 'youtube',
+                'video_id': 'k3rRrl9J2F4',
+                'is_free': True,
+                'duration': 660,
+                'processing_status': 'ready',
+                'order_in_subject': 1
+            },
+            # Advanced Mathematics
+            {
+                'title': 'Quadratic Equations and Functions',
+                'description': 'Master solving quadratic equations using various methods.',
+                'subject': subjects['Mathematics'],
+                'class_level': class_levels['SSS 2'],
+                'video_source': 'youtube',
+                'video_id': 'wMMGCrMe7tQ',
+                'is_free': False,
+                'duration': 1200,
+                'processing_status': 'ready',
+                'order_in_subject': 2
+            },
+            # Advanced Biology
+            {
+                'title': 'Cell Biology and Genetics',
+                'description': 'Explore cellular structures and genetic principles.',
+                'subject': subjects['Biology'],
                 'class_level': class_levels['SSS 1'],
                 'video_source': 'youtube',
-                'video_id': 'dQw4w9WgXcQ',
+                'video_id': 'fNlb4GiO8cI',
                 'is_free': False,
+                'duration': 1440,
+                'processing_status': 'ready',
+                'order_in_subject': 1
+            },
+            # Advanced Chemistry
+            {
+                'title': 'Chemical Reactions and Bonding',
+                'description': 'Understand chemical reactions and molecular bonding.',
+                'subject': subjects['Chemistry'],
+                'class_level': class_levels['SSS 2'],
+                'video_source': 'youtube',
+                'video_id': 'k3rRrl9J2F4',
+                'is_free': False,
+                'duration': 1320,
+                'processing_status': 'ready',
+                'order_in_subject': 2
+            },
+            # Advanced Physics
+            {
+                'title': 'Newton\'s Laws and Motion',
+                'description': 'Learn about the fundamental laws governing motion and forces.',
+                'subject': subjects['Physics'],
+                'class_level': class_levels['SSS 2'],
+                'video_source': 'youtube',
+                'video_id': 'b1t41Q3xRM8',
+                'is_free': False,
+                'duration': 1500,
+                'processing_status': 'ready',
+                'order_in_subject': 2
+            },
+            # Literature
+            {
+                'title': 'Introduction to Literature Analysis',
+                'description': 'Learn to analyze and appreciate literary works.',
+                'subject': subjects['Literature'],
+                'class_level': class_levels['JSS 2'],
+                'video_source': 'youtube',
+                'video_id': 'b1t41Q3xRM8',  # Using as placeholder
+                'is_free': True,
                 'duration': 960,
                 'processing_status': 'ready',
                 'order_in_subject': 1
