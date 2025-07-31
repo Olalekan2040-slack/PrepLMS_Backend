@@ -80,6 +80,10 @@ class User(AbstractUser):
         return self.email
     
     def save(self, *args, **kwargs):
+        # Handle empty phone_number to avoid unique constraint issues
+        if self.phone_number == '':
+            self.phone_number = None
+            
         if self.last_login and not self.last_login_date:
             self.last_login_date = self.last_login
         super().save(*args, **kwargs)

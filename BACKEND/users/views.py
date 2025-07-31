@@ -25,6 +25,30 @@ class UserRegistrationView(generics.CreateAPIView):
     permission_classes = [permissions.AllowAny]
     parser_classes = [JSONParser, MultiPartParser, FormParser]
 
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            try:
+                user = serializer.save()
+                otp = set_otp_for_user(user)
+                # Simulate sending OTP (print to console or log)
+                print(f"OTP for {user.email or user.phone_number}: {otp}")
+                return Response({
+                    'message': 'Registration successful. Please check your email/phone for OTP verification.',
+                    'email': user.email,
+                    'phone_number': user.phone_number
+                }, status=status.HTTP_201_CREATED)
+            except Exception as e:
+                return Response({
+                    'error': 'Registration failed. Please try again.',
+                    'details': str(e)
+                }, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response({
+                'error': 'Invalid registration data',
+                'details': serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
+
     def perform_create(self, serializer):
         user = serializer.save()
         otp = set_otp_for_user(user)
@@ -38,19 +62,49 @@ class OTPVerificationView(APIView):
     serializer_class = OTPVerificationSerializer
 
     def post(self, request):
-        serializer = self.serializer_class(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        email_or_phone = serializer.validated_data['email_or_phone']
-        otp = serializer.validated_data['otp']
-        if '@' in email_or_phone:
-            user = User.objects.filter(email=email_or_phone).first()
-        else:
-            user = User.objects.filter(phone_number=email_or_phone).first()
-        if not user:
-            return Response({"detail": "User not found."}, status=404)
-        if verify_user_otp(user, otp):
-            return Response({"detail": "Account verified successfully."})
-        return Response({"detail": "Invalid or expired OTP."}, status=400)
+        try:
+            serializer = self.serializer_class(data=request.data)
+            if serializer.is_valid():
+                email_or_phone = serializer.validated_data['email_or_phone']
+                otp = serializer.validated_data['otp']
+                
+                if '@' in email_or_phone:
+                    user = User.objects.filter(email=email_or_phone).first()
+                else:
+                    user = User.objects.filter(phone_number=email_or_phone).first()
+                    
+                if not user:
+                    return Response({
+                        "error": "User not found.",
+                        "details": "No account found with this email or phone number."
+                    }, status=status.HTTP_404_NOT_FOUND)
+                    
+                if verify_user_otp(user, otp):
+                    user.is_active = True  # Activate the user after OTP verification
+                    user.save()
+                    return Response({
+                        "message": "Account verified successfully. You can now login.",
+                        "user": {
+                            "email": user.email,
+                            "phone_number": user.phone_number,
+                            "is_active": user.is_active
+                        }
+                    })
+                else:
+                    return Response({
+                        "error": "Invalid or expired OTP.",
+                        "details": "Please check your OTP code or request a new one."
+                    }, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response({
+                    "error": "Invalid verification data",
+                    "details": serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                "error": "Verification failed due to server error",
+                "details": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class UserLoginView(APIView):
@@ -58,22 +112,39 @@ class UserLoginView(APIView):
     serializer_class = UserLoginSerializer
 
     def post(self, request):
-        serializer = self.serializer_class(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = serializer.user
-        refresh = RefreshToken.for_user(user)
-        # Get access token lifetime from settings or default to 1 hour
-        access_lifetime = getattr(settings, 'SIMPLE_JWT', {}).get('ACCESS_TOKEN_LIFETIME', timedelta(hours=1))
-        if isinstance(access_lifetime, timedelta):
-            expires_in = int(access_lifetime.total_seconds())
-        else:
-            expires_in = 3600  # fallback
-        return Response({
-            'refresh': str(refresh),
-            'access': str(refresh.access_token),
-            'expires_in': expires_in,
-            'message': f"Login successful. Your access token will expire in {expires_in // 60} minutes."
-        })
+        try:
+            serializer = self.serializer_class(data=request.data)
+            if serializer.is_valid():
+                user = serializer.user
+                refresh = RefreshToken.for_user(user)
+                # Get access token lifetime from settings or default to 1 hour
+                access_lifetime = getattr(settings, 'SIMPLE_JWT', {}).get('ACCESS_TOKEN_LIFETIME', timedelta(hours=1))
+                if isinstance(access_lifetime, timedelta):
+                    expires_in = int(access_lifetime.total_seconds())
+                else:
+                    expires_in = 3600  # fallback
+                return Response({
+                    'refresh': str(refresh),
+                    'access': str(refresh.access_token),
+                    'expires_in': expires_in,
+                    'user': {
+                        'id': user.id,
+                        'email': user.email,
+                        'phone_number': user.phone_number,
+                        'is_email_verified': user.is_email_verified
+                    },
+                    'message': f"Login successful. Your access token will expire in {expires_in // 60} minutes."
+                })
+            else:
+                return Response({
+                    'error': 'Login failed',
+                    'details': serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                'error': 'Login failed due to server error',
+                'details': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class PasswordResetRequestView(APIView):

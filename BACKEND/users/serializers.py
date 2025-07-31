@@ -46,9 +46,15 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         validated_data.pop('confirm_password')
+        
+        # Handle phone_number to avoid unique constraint issues
+        phone_number = validated_data.get('phone_number', '')
+        if not phone_number or phone_number.strip() == '':
+            phone_number = None
+        
         user = User(
             email=validated_data.get('email', ''),
-            phone_number=validated_data.get('phone_number', ''),
+            phone_number=phone_number,
             avatar=validated_data.get('avatar', None),
             contact_details=validated_data.get('contact_details', ''),
             is_active=False
@@ -64,17 +70,19 @@ class UserLoginSerializer(serializers.Serializer):
     def validate(self, data):
         email_or_phone = data.get('email_or_phone')
         password = data.get('password')
+        
         if '@' in email_or_phone:
             self.user = User.objects.filter(email=email_or_phone).first()
         else:
             self.user = User.objects.filter(phone_number=email_or_phone).first()
+            
         if not self.user or not self.user.check_password(password):
             raise serializers.ValidationError(
-                _("Invalid credentials. Please try again.")
+                _("Invalid email/phone or password. Please try again.")
             )
         if not self.user.is_active:
             raise serializers.ValidationError(
-                _("Account is not activated. Please verify your account.")
+                _("Account is not activated. Please verify your account first.")
             )
         return data
 
