@@ -53,13 +53,33 @@ export const userAPI = {
 
 // Content API endpoints
 export const contentAPI = {
+  // Video endpoints
   getVideos: (params) => client.get('/content/videos/', { params }),
   getVideo: (id) => client.get(`/content/videos/${id}/`),
+  getVideosByCourse: (courseId) => client.get(`/content/videos/course/${courseId}/`),
   addBookmark: (videoId) => client.post(`/content/videos/${videoId}/bookmark/`),
   removeBookmark: (videoId) => client.delete(`/content/videos/${videoId}/bookmark/`),
-  getBookmarks: () => client.get('/content/bookmarks/'),
-  recordProgress: (videoId, data) => client.post(`/content/videos/${videoId}/progress/`, data),
-  getProgress: (videoId) => client.get(`/content/videos/${videoId}/progress/`)
+  getBookmarks: () => client.get('/content/videos/bookmarks/'),
+  recordProgress: (videoId, data) => client.post(`/content/videos/progress/`, data),
+  getProgress: (videoId) => client.get(`/content/videos/progress/${videoId}/`),
+  
+  // Course endpoints (using subjects as courses)
+  getCourses: () => client.get('/content/courses/'),
+  getCourse: (id) => client.get(`/content/courses/${id}/`),
+  getCoursesBySubject: (subject) => client.get(`/content/courses/subject/${subject}/`),
+  getCoursesByClass: (classLevel) => client.get(`/content/courses/class/${classLevel}/`),
+  getFeaturedCourses: () => client.get('/content/courses/featured/'),
+  
+  // Subject endpoints
+  getSubjects: () => client.get('/content/subjects/'),
+  getSubject: (id) => client.get(`/content/subjects/${id}/`),
+  
+  // Education level and class level endpoints
+  getEducationLevels: () => client.get('/content/education-levels/'),
+  getClassLevels: () => client.get('/content/class-levels/'),
+  
+  // Free sample videos
+  getFreeSampleVideos: () => client.get('/content/videos/free-sample/')
 };
 
 // Subscription API endpoints

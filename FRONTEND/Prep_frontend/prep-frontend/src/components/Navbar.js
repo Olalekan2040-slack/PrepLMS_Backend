@@ -25,6 +25,7 @@ import VolunteerActivismIcon from '@mui/icons-material/VolunteerActivism';
 import ContactSupportIcon from '@mui/icons-material/ContactSupport';
 import LoginIcon from '@mui/icons-material/Login';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 const getMenuItems = (isAuthenticated) => [
   { label: 'Home', link: '/', icon: <HomeIcon /> },
@@ -36,7 +37,7 @@ const getMenuItems = (isAuthenticated) => [
   { label: 'Contact/Support', link: '/contact', icon: <ContactSupportIcon /> },
   ...(isAuthenticated
     ? [
-        { label: 'Logout', link: '/auth?logout=1', icon: <LoginIcon /> }
+        { label: 'Logout', link: '/logout', icon: <LoginIcon /> }
       ]
     : [
         { label: 'Login/Sign Up', link: '/auth', icon: <LoginIcon /> }
@@ -48,10 +49,14 @@ export default function Navbar() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const navigate = useNavigate();
-  const token = localStorage.getItem('access_token');
-  const isAuthenticated = Boolean(token);
+  const { isAuthenticated, logout } = useAuth();
   const menuItems = getMenuItems(isAuthenticated);
   const handleNavigation = (item) => {
+    if (item.label === 'Logout') {
+      logout();
+      return;
+    }
+    
     if (item.protected && !isAuthenticated) {
       // Save the intended destination and redirect to login
       navigate('/auth', { state: { from: item.link } });
@@ -70,7 +75,7 @@ export default function Navbar() {
           <ListItem
             button
             key={item.label}
-            onClick={() => handleNavigation(item.link)}
+            onClick={() => handleNavigation(item)}
             disabled={item.comingSoon}
             sx={{
               opacity: item.comingSoon ? 0.5 : 1,
@@ -137,7 +142,7 @@ export default function Navbar() {
               <Button
                 key={item.label}
                 color="inherit"
-                onClick={() => handleNavigation(item.link)}
+                onClick={() => handleNavigation(item)}
                 disabled={item.comingSoon}
                 startIcon={item.icon}
                 sx={{
