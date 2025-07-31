@@ -1,0 +1,43 @@
+.subscription-plans-container {
+  max-width: 1200px;
+}
+
+.subscription-card {
+  transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+  border: 1px solid #ddd;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.subscription-card:hover {
+  transform: translateY(-5px);
+}
+
+.subscription-card .card-header {
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #ddd;
+}
+
+.price-text {
+  font-size: 2rem;
+  color: #007bff;
+  margin: 1rem 0;
+}
+
+.plan-features {
+  list-style: none;
+  padding-left: 0;
+  margin: 1rem 0;
+}
+
+.plan-features li {
+  padding: 0.5rem 0;
+  position: relative;
+  padding-left: 1.5rem;
+}
+
+.plan-features li:before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  color: #28a745;
+}

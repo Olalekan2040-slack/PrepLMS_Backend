@@ -1,184 +1,308 @@
 import React, { useState } from 'react';
 import { Box, Paper, Tabs, Tab, TextField, Button, Alert, CircularProgress } from '@mui/material';
-import { authAPI, userAPI, adminAPI } from '../../api';
+import { authAPI, userAPI } from '../../api';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 
-function TabPanel(props) {
-  const { children, value, index, ...other } = props;
-  return (
-    <div role="tabpanel" hidden={value !== index} {...other}>
-      {value === index && <Box sx={{ p: 2 }}>{children}</Box>}
-    </div>
-  );
-}
+const TabPanel = ({ children, value, index, ...other }) => (
+  <div role="tabpanel" hidden={value !== index} {...other}>
+    {value === index && <Box sx={{ p: 2 }}>{children}</Box>}
+  </div>
+);
 
-export default function Auth() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const [tab, setTab] = useState(0);
+const LoginForm = ({ onSubmit, loading }) => {
   const [form, setForm] = useState({});
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState(null);
-
-  React.useEffect(() => {
-    if (location.search.includes('logout=1')) {
-      localStorage.removeItem('access_token');
-      navigate('/auth', { replace: true });
-    }
-  }, [location, navigate]);
-
+  
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleTab = (e, v) => {
-    setTab(v);
-    setMessage(null);
-    setForm({});
-  };
-
-  // Register
-  const handleRegister = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    setLoading(true);
-    setMessage(null);
-    try {
-      const formData = new FormData();
-      Object.entries(form).forEach(([k, v]) => formData.append(k, v));
-      await authAPI.register(formData);
-      setMessage({ type: 'success', text: 'Registration successful! Please verify OTP.' });
-      setTab(1);
-    } catch (error) {
-      setMessage({ type: 'error', text: error.response?.data?.detail || 'Registration failed' });
-    } finally {
-      setLoading(false);
-    }
-  };  // Login
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setMessage(null);
-    try {
-      const response = await authAPI.login(form);
-      localStorage.setItem('access_token', response.data.access);
-      localStorage.setItem('refresh_token', response.data.refresh);
-      
-      const userProfile = await userAPI.getProfile();
-      localStorage.setItem('user_profile', JSON.stringify(userProfile.data));
-      
-      const redirect = new URLSearchParams(location.search).get('redirect') || '/';
-      navigate(redirect, { replace: true });
-    } catch (error) {
-      setMessage({ type: 'error', text: error.response?.data?.detail || 'Login failed' });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // OTP Verification
-  const handleVerifyOtp = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setMessage(null);
-    try {
-      await authAPI.verifyOtp(form);
-      setMessage({ type: 'success', text: 'OTP verified! Please login.' });
-      setTab(0);
-    } catch (error) {
-      setMessage({ type: 'error', text: error.response?.data?.detail || 'OTP verification failed' });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Password Reset Request
-  const handlePasswordResetRequest = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setMessage(null);
-    try {
-      await authAPI.passwordResetRequest(form);
-      setMessage({ type: 'success', text: 'Password reset link sent to your email!' });
-    } catch (error) {
-      setMessage({ type: 'error', text: error.response?.data?.detail || 'Password reset request failed' });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Password Reset Confirm
-  const handlePasswordResetConfirm = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setMessage(null);
-    try {
-      await authAPI.passwordResetConfirm(form);
-      setMessage({ type: 'success', text: 'Password reset successful! Please login.' });
-      setTab(0);
-    } catch (error) {
-      setMessage({ type: 'error', text: error.response?.data?.detail || 'Password reset failed' });
-    } finally {
-      setLoading(false);
-    }
+    onSubmit(form);
   };
 
   return (
-    <Paper elevation={2} sx={{ p: 3, mb: 2 }}>
-      <Tabs value={tab} onChange={handleTab} variant="scrollable" scrollButtons="auto">
-        <Tab label="Register" />
-        <Tab label="Login" />
-        <Tab label="Verify OTP" />
-        <Tab label="Reset Password" />
-        <Tab label="Confirm Reset" />
-      </Tabs>
-      {message && <Alert severity={message.type} sx={{ mt: 2 }}>{message.text}</Alert>}
-      <TabPanel value={tab} index={0}>
-        <form onSubmit={handleRegister}>
-          <TextField label="Email" name="email" fullWidth margin="normal" onChange={handleChange} required />
-          <TextField label="Phone Number" name="phone_number" fullWidth margin="normal" onChange={handleChange} required />
-          <TextField label="Password" name="password" type="password" fullWidth margin="normal" onChange={handleChange} required />
-          <TextField label="Confirm Password" name="confirm_password" type="password" fullWidth margin="normal" onChange={handleChange} required />
-          <TextField label="Contact Details" name="contact_details" fullWidth margin="normal" onChange={handleChange} />
-          <Button type="submit" variant="contained" color="primary" fullWidth disabled={loading} sx={{ mt: 2 }}>
-            {loading ? <CircularProgress size={24} /> : 'Register'}
-          </Button>
-        </form>
-      </TabPanel>
-      <TabPanel value={tab} index={1}>
-        <form onSubmit={handleLogin}>
-          <TextField label="Email or Phone" name="email_or_phone" fullWidth margin="normal" onChange={handleChange} required />
-          <TextField label="Password" name="password" type="password" fullWidth margin="normal" onChange={handleChange} required />          <Button type="submit" variant="contained" color="primary" fullWidth disabled={loading} sx={{ mt: 2 }}>
-            {loading ? <CircularProgress size={24} /> : 'Login'}
-          </Button>
-        </form>
-      </TabPanel>
-      <TabPanel value={tab} index={2}>
-        <form onSubmit={handleVerifyOtp}>
-          <TextField label="Email or Phone" name="email_or_phone" fullWidth margin="normal" onChange={handleChange} required />
-          <TextField label="OTP" name="otp" fullWidth margin="normal" onChange={handleChange} required />
-          <Button type="submit" variant="contained" color="primary" fullWidth disabled={loading} sx={{ mt: 2 }}>
-            {loading ? <CircularProgress size={24} /> : 'Verify OTP'}
-          </Button>
-        </form>
-      </TabPanel>
-      <TabPanel value={tab} index={3}>
-        <form onSubmit={handlePasswordResetRequest}>
-          <TextField label="Email or Phone" name="email_or_phone" fullWidth margin="normal" onChange={handleChange} required />
-          <Button type="submit" variant="contained" color="primary" fullWidth disabled={loading} sx={{ mt: 2 }}>
-            {loading ? <CircularProgress size={24} /> : 'Send OTP'}
-          </Button>
-        </form>
-      </TabPanel>
-      <TabPanel value={tab} index={4}>
-        <form onSubmit={handlePasswordResetConfirm}>
-          <TextField label="Email or Phone" name="email_or_phone" fullWidth margin="normal" onChange={handleChange} required />
-          <TextField label="OTP" name="otp" fullWidth margin="normal" onChange={handleChange} required />
-          <TextField label="New Password" name="new_password" type="password" fullWidth margin="normal" onChange={handleChange} required />
-          <TextField label="Confirm Password" name="confirm_password" type="password" fullWidth margin="normal" onChange={handleChange} required />
-          <Button type="submit" variant="contained" color="primary" fullWidth disabled={loading} sx={{ mt: 2 }}>
-            {loading ? <CircularProgress size={24} /> : 'Reset Password'}
-          </Button>
-        </form>
-      </TabPanel>    </Paper>
+    <Box component="form" onSubmit={handleSubmit}>
+      <TextField
+        fullWidth
+        margin="normal"
+        label="Email"
+        name="email"
+        type="email"
+        required
+        onChange={handleChange}
+      />
+      <TextField
+        fullWidth
+        margin="normal"
+        label="Password"
+        name="password"
+        type="password"
+        required
+        onChange={handleChange}
+      />
+      <Button
+        fullWidth
+        type="submit"
+        variant="contained"
+        color="primary"
+        disabled={loading}
+        sx={{ mt: 2 }}
+      >
+        {loading ? <CircularProgress size={24} /> : 'Login'}
+      </Button>
+    </Box>
   );
-}
+};
+
+const RegisterForm = ({ onSubmit, loading }) => {
+  const [form, setForm] = useState({});
+  
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSubmit(form);
+  };
+
+  return (
+    <Box component="form" onSubmit={handleSubmit}>
+      <TextField
+        fullWidth
+        margin="normal"
+        label="Email"
+        name="email"
+        type="email"
+        required
+        onChange={handleChange}
+      />
+      <TextField
+        fullWidth
+        margin="normal"
+        label="First Name"
+        name="first_name"
+        required
+        onChange={handleChange}
+      />
+      <TextField
+        fullWidth
+        margin="normal"
+        label="Last Name"
+        name="last_name"
+        required
+        onChange={handleChange}
+      />
+      <TextField
+        fullWidth
+        margin="normal"
+        label="Password"
+        name="password"
+        type="password"
+        required
+        onChange={handleChange}
+      />
+      <Button
+        fullWidth
+        type="submit"
+        variant="contained"
+        color="primary"
+        disabled={loading}
+        sx={{ mt: 2 }}
+      >
+        {loading ? <CircularProgress size={24} /> : 'Register'}
+      </Button>
+    </Box>
+  );
+};
+
+const OtpForm = ({ onSubmit, loading }) => {
+  const [form, setForm] = useState({});
+  
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSubmit(form);
+  };
+
+  return (
+    <Box component="form" onSubmit={handleSubmit}>
+      <TextField
+        fullWidth
+        margin="normal"
+        label="Email"
+        name="email"
+        type="email"
+        required
+        onChange={handleChange}
+      />
+      <TextField
+        fullWidth
+        margin="normal"
+        label="OTP"
+        name="otp"
+        required
+        onChange={handleChange}
+      />
+      <Button
+        fullWidth
+        type="submit"
+        variant="contained"
+        color="primary"
+        disabled={loading}
+        sx={{ mt: 2 }}
+      >
+        {loading ? <CircularProgress size={24} /> : 'Verify OTP'}
+      </Button>
+    </Box>
+  );
+};
+
+const Auth = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { login } = useAuth();
+  const [tab, setTab] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState(null);
+
+  // Get redirect path from location state or default to home
+  const from = location.state?.from?.pathname || '/';
+
+  React.useEffect(() => {
+    if (location.search.includes('logout=1')) {
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      navigate('/auth', { replace: true });
+    }
+  }, [location, navigate]);
+
+  const handleTab = (e, v) => {
+    setTab(v);
+    setMessage(null);
+  };
+
+  const handleLogin = (formData) => {
+    setLoading(true);
+    setMessage(null);
+
+    authAPI.login(formData)
+      .then(response => {
+        const { access, refresh } = response.data;
+        login({ access, refresh });
+        return userAPI.getProfile();
+      })
+      .then(userProfile => {
+        localStorage.setItem('user_profile', JSON.stringify(userProfile.data));
+        // Redirect to the page they were trying to access, or home if none
+        navigate(from, { replace: true });
+      })
+      .catch(error => {
+        console.error('Login error:', error);
+        setMessage({
+          type: 'error',
+          text: error.response?.data?.detail || 'Login failed. Please check your credentials.'
+        });
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  };
+
+  const handleRegister = (formData) => {
+    setLoading(true);
+    setMessage(null);
+
+    const data = new FormData();
+    Object.entries(formData).forEach(([k, v]) => data.append(k, v));
+
+    authAPI.register(data)
+      .then(() => {
+        setMessage({
+          type: 'success',
+          text: 'Registration successful! Please verify your email with the OTP.'
+        });
+        setTab(2);
+      })
+      .catch(error => {
+        setMessage({
+          type: 'error',
+          text: error.response?.data?.detail || 'Registration failed. Please try again.'
+        });
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  };
+
+  const handleVerifyOtp = (formData) => {
+    setLoading(true);
+    setMessage(null);
+
+    authAPI.verifyOtp(formData)
+      .then(() => {
+        setMessage({
+          type: 'success',
+          text: 'Email verified successfully! Please login.'
+        });
+        setTab(0);
+      })
+      .catch(error => {
+        setMessage({
+          type: 'error',
+          text: error.response?.data?.detail || 'OTP verification failed. Please try again.'
+        });
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  };
+
+  return (
+    <Box sx={{ 
+      minHeight: '100vh', 
+      display: 'flex', 
+      alignItems: 'center', 
+      justifyContent: 'center', 
+      p: 2 
+    }}>
+      <Paper sx={{ width: '100%', maxWidth: 400 }}>
+        <Tabs 
+          value={tab} 
+          onChange={handleTab} 
+          variant="fullWidth"
+          sx={{ borderBottom: 1, borderColor: 'divider' }}
+        >
+          <Tab label="Login" />
+          <Tab label="Register" />
+          <Tab label="Verify OTP" />
+        </Tabs>
+
+        {message && (
+          <Box sx={{ p: 2 }}>
+            <Alert severity={message.type}>{message.text}</Alert>
+          </Box>
+        )}
+
+        <TabPanel value={tab} index={0}>
+          <LoginForm onSubmit={handleLogin} loading={loading} />
+        </TabPanel>
+
+        <TabPanel value={tab} index={1}>
+          <RegisterForm onSubmit={handleRegister} loading={loading} />
+        </TabPanel>
+
+        <TabPanel value={tab} index={2}>
+          <OtpForm onSubmit={handleVerifyOtp} loading={loading} />
+        </TabPanel>
+      </Paper>
+    </Box>
+  );
+};
+
+export default Auth;

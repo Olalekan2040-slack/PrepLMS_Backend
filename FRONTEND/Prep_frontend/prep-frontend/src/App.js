@@ -1,20 +1,21 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ThemeProvider, createTheme, CssBaseline, Box, Container, Typography } from '@mui/material';
+import { ThemeProvider, createTheme, CssBaseline, Box, Container } from '@mui/material';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import About from './pages/About';
 import Tutor from './pages/Tutor';
-import TutorLanding from './pages/TutorLanding';
 import CourseDetail from './pages/CourseDetail';
-import Practice from './pages/Practice';
 import Rewards from './pages/Rewards';
 import Account from './pages/Account';
-import Donate from './pages/Donate';
 import Contact from './pages/Contact';
 import Auth from './components/Auth/Auth';
-import Admin from './pages/Admin';
 import ProtectedRoute from './components/Auth/ProtectedRoute';
+import SubscriptionPlans from './pages/Subscription/SubscriptionPlans';
+import VerifySubscription from './pages/Subscription/VerifySubscription';
+import SubscriptionStatus from './pages/Subscription/SubscriptionStatus';
+import { SubscriptionProvider } from './contexts/SubscriptionContext';
+import AuthProvider from './contexts/AuthContext';
 
 const theme = createTheme({
   palette: {
@@ -82,51 +83,66 @@ const theme = createTheme({
 
 export default function App() {
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <Router>
-        <Box sx={{ 
-          display: 'flex', 
-          flexDirection: 'column',
-          minHeight: '100vh',
-          bgcolor: 'background.default'
-        }}>
-          <Navbar />
-          <Box sx={{ flex: 1, py: { xs: 2, md: 4 } }}>
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/about" element={<About />} />
-              <Route path="/tutor" element={<TutorLanding />} />
-              <Route path="/tutor/dashboard" element={
-                <ProtectedRoute>
-                  <Tutor />
-                </ProtectedRoute>
-              } />
-              <Route path="/tutor/course/:courseId" element={
-                <ProtectedRoute>
-                  <CourseDetail />
-                </ProtectedRoute>
-              } />
-              <Route path="/practice" element={<Practice />} />
-              <Route path="/rewards" element={<Rewards />} />              <Route path="/account/*" element={
-                <ProtectedRoute>
-                  <Account />
-                </ProtectedRoute>
-              } />
-              <Route path="/donate" element={<Donate />} />
-              <Route path="/contact" element={<Contact />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/admin/*" element={<Admin />} />
-              <Route path="*" element={<Navigate to="/" />} />
-            </Routes>
-          </Box>
-          <Container maxWidth="md" sx={{ py: 2, textAlign: 'center' }}>
-            <Typography variant="caption" color="text.secondary">
-              Prep Platform &copy; {new Date().getFullYear()}
-            </Typography>
-          </Container>
-        </Box>
-      </Router>
-    </ThemeProvider>
+    <Router>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <AuthProvider>
+          <SubscriptionProvider>
+            <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+              <Navbar />
+              <Container component="main" sx={{ flexGrow: 1, py: 4 }}>
+                <Routes>
+                  {/* Public Routes */}
+                  <Route path="/" element={<Home />} />
+                  <Route path="/about" element={<About />} />
+                  <Route path="/contact" element={<Contact />} />
+                  <Route path="/auth" element={<Auth />} />
+                  
+                  {/* Protected Routes */}
+                  <Route path="/tutor" element={
+                    <ProtectedRoute>
+                      <Tutor />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/tutor/course/:id" element={
+                    <ProtectedRoute>
+                      <CourseDetail />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/rewards" element={
+                    <ProtectedRoute>
+                      <Rewards />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/account/*" element={
+                    <ProtectedRoute>
+                      <Account />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/subscription/plans" element={
+                    <ProtectedRoute>
+                      <SubscriptionPlans />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/subscription/verify" element={
+                    <ProtectedRoute>
+                      <VerifySubscription />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/subscription/status" element={
+                    <ProtectedRoute>
+                      <SubscriptionStatus />
+                    </ProtectedRoute>
+                  } />
+                  
+                  {/* Catch all route */}
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </Container>
+            </Box>
+          </SubscriptionProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </Router>
   );
 }

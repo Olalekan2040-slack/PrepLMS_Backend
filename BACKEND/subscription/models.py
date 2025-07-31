@@ -1,6 +1,10 @@
 from django.db import models
 from django.utils import timezone
-from users.models import User
+from django.conf import settings
+from datetime import timedelta
+
+# Import User model from settings
+User = settings.AUTH_USER_MODEL
 
 
 class SubscriptionPlan(models.Model):
@@ -35,7 +39,7 @@ class VoucherCode(models.Model):
     code = models.CharField(max_length=20, unique=True)
     plan = models.ForeignKey(SubscriptionPlan, on_delete=models.CASCADE, related_name='vouchers')
     is_used = models.BooleanField(default=False)
-    used_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='vouchers')
+    used_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='used_vouchers')
     used_at = models.DateTimeField(null=True, blank=True)
     expiry_date = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -69,12 +73,12 @@ class UserSubscription(models.Model):
     """User subscription model."""
     
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='subscriptions')
-    plan = models.ForeignKey(SubscriptionPlan, on_delete=models.CASCADE, related_name='subscriptions')
+    plan = models.ForeignKey(SubscriptionPlan, on_delete=models.CASCADE, related_name='user_subscriptions')
     start_date = models.DateTimeField(default=timezone.now)
     end_date = models.DateTimeField()
     is_active = models.BooleanField(default=True)
     payment_reference = models.CharField(max_length=255, blank=True, null=True)
-    voucher = models.ForeignKey(VoucherCode, on_delete=models.SET_NULL, null=True, blank=True, related_name='subscriptions')
+    voucher = models.ForeignKey(VoucherCode, on_delete=models.SET_NULL, null=True, blank=True, related_name='user_subscriptions')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -97,15 +101,25 @@ class UserSubscription(models.Model):
 
 
 class Payment(models.Model):
-    """Payment model for tracking Paystack transactions."""
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='payments')
-    plan = models.ForeignKey(SubscriptionPlan, on_delete=models.CASCADE, related_name='payments', null=True, blank=True)
+    """Payment model for tracking transactions."""
+    
+    PAYMENT_STATUS = (
+        ('pending', 'Pending'),
+        ('successful', 'Successful'),
+        ('failed', 'Failed'),
+    )
+
+    subscription = models.OneToOneField(UserSubscription, on_delete=models.CASCADE, related_name='payment')
     amount = models.DecimalField(max_digits=10, decimal_places=2)
-    reference = models.CharField(max_length=100, unique=True)
-    status = models.CharField(max_length=20, default='pending')  # pending, success, failed
-    paystack_response = models.JSONField(null=True, blank=True)
+    currency = models.CharField(max_length=3, default='USD')
+    reference = models.CharField(max_length=255, unique=True)
+    status = models.CharField(max_length=20, choices=PAYMENT_STATUS, default='pending')
+    payment_response = models.JSONField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        ordering = ['-created_at']
+
     def __str__(self):
-        return f"{self.user.email} - {self.plan.name if self.plan else 'No Plan'} - {self.status}"
+        return f"{self.reference} - {self.amount} {self.currency}"

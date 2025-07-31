@@ -349,138 +349,169 @@ export default function ContentManagement() {
           {selectedVideo ? 'Edit Video' : 'Add New Video'}
         </DialogTitle>
         <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12}>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={12}>
               <TextField
                 fullWidth
                 label="Title"
+                name="title"
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                sx={{
+                required
+                variant="outlined"
+                InputLabelProps={{ style: { color: 'white' } }}
+                sx={{ 
                   '& .MuiOutlinedInput-root': {
                     color: 'white',
-                    '& fieldset': {
-                      borderColor: 'rgba(255, 255, 255, 0.23)',
-                    },
-                    '&:hover fieldset': {
-                      borderColor: 'rgba(255, 255, 255, 0.5)',
-                    },
-                    '&.Mui-focused fieldset': {
-                      borderColor: theme.palette.primary.main,
-                    },
-                  },
-                  '& .MuiInputLabel-root': {
-                    color: 'rgba(255, 255, 255, 0.7)',
-                    '&.Mui-focused': {
-                      color: theme.palette.primary.main,
-                    },
-                  },
+                    '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.23)' },
+                    '&:hover fieldset': { borderColor: 'white' },
+                  }
                 }}
             </Grid>
             <Grid item xs={12}>
               <TextField
                 fullWidth
-                multiline
-                rows={4}
                 label="Description"
+                name="description"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              />
+                multiline
+                rows={4}
+                variant="outlined"
+                InputLabelProps={{ style: { color: 'white' } }}
+                sx={{ 
+                  '& .MuiOutlinedInput-root': {
+                    color: 'white',
+                    '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.23)' },
+                    '&:hover fieldset': { borderColor: 'white' },
+                  }
+                }}
             </Grid>
-            <Grid item xs={6}>
+            <Grid item xs={12} sm={6}>
               <FormControl fullWidth>
-                <InputLabel>Subject</InputLabel>
+                <InputLabel id="subject-label" sx={{ color: 'white' }}>Subject</InputLabel>
                 <Select
+                  labelId="subject-label"
                   value={formData.subject_id}
                   onChange={(e) => setFormData({ ...formData, subject_id: e.target.value })}
                   label="Subject"
+                  required
+                  sx={{ 
+                    color: 'white',
+                    '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.23)' },
+                    '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'white' },
+                    '& .MuiSvgIcon-root': { color: 'white' }
+                  }}
                 >
                   {subjects.map((subject) => (
-                    <MenuItem key={subject.id} value={subject.id}>
-                      {subject.name}
-                    </MenuItem>
+                    <MenuItem key={subject.id} value={subject.id}>{subject.name}</MenuItem>
                   ))}
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={6}>
+            <Grid item xs={12} sm={6}>
               <FormControl fullWidth>
-                <InputLabel>Class Level</InputLabel>
+                <InputLabel id="class-level-label" sx={{ color: 'white' }}>Class Level</InputLabel>
                 <Select
+                  labelId="class-level-label"
                   value={formData.class_level_id}
                   onChange={(e) => setFormData({ ...formData, class_level_id: e.target.value })}
                   label="Class Level"
+                  required
+                  sx={{ 
+                    color: 'white',
+                    '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.23)' },
+                    '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'white' },
+                    '& .MuiSvgIcon-root': { color: 'white' }
+                  }}
                 >
                   {classLevels.map((level) => (
-                    <MenuItem key={level.id} value={level.id}>
-                      {level.name}
-                    </MenuItem>
+                    <MenuItem key={level.id} value={level.id}>{level.name}</MenuItem>
                   ))}
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={6}>
+            <Grid item xs={12}>
               <FormControl fullWidth>
-                <InputLabel>Video Source</InputLabel>
+                <InputLabel id="video-source-label" sx={{ color: 'white' }}>Video Source</InputLabel>
                 <Select
+                  labelId="video-source-label"
                   value={formData.video_source}
                   onChange={handleVideoSourceChange}
                   label="Video Source"
+                  required
+                  sx={{ 
+                    color: 'white',
+                    '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.23)' },
+                    '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'white' },
+                    '& .MuiSvgIcon-root': { color: 'white' }
+                  }}
                 >
-                  <MenuItem value="upload">Device Upload</MenuItem>
-                  <MenuItem value="drive">Google Drive</MenuItem>
                   <MenuItem value="youtube">YouTube</MenuItem>
+                  <MenuItem value="upload">File Upload</MenuItem>
+                  <MenuItem value="drive">Google Drive</MenuItem>
                 </Select>
-                <FormHelperText>
-                  {formData.video_source === 'upload' && 'Select a video file from your device (.mp4, .mov, max 2GB)'}
-                  {formData.video_source === 'drive' && 'Paste a Google Drive sharing link'}
-                  {formData.video_source === 'youtube' && 'Paste a YouTube video URL'}
-                </FormHelperText>
               </FormControl>
             </Grid>
             <Grid item xs={12}>
               {formData.video_source === 'upload' ? (
-                <Button
-                  variant="outlined"
-                  component="label"
-                  startIcon={<CloudUploadIcon />}
-                  fullWidth
-                >
-                  Choose Video File
+                <Box sx={{ textAlign: 'center', py: 2, border: '2px dashed rgba(255, 255, 255, 0.23)', borderRadius: 1 }}>
                   <input
-                    type="file"
-                    hidden
                     accept="video/*"
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      video_file: e.target.files[0]
-                    })}
+                    style={{ display: 'none' }}
+                    id="video-file-input"
+                    type="file"
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        console.log('Selected file:', file);
+                        setFormData(prev => ({
+                          ...prev,
+                          video_file: file
+                        }));
+                      }
+                    }}
                   />
-                </Button>
+                  <label htmlFor="video-file-input">
+                    <Button
+                      variant="contained"
+                      component="span"
+                      startIcon={<CloudUploadIcon />}
+                    >
+                      Select Video File
+                    </Button>
+                  </label>
+                  {formData.video_file && (
+                    <Typography variant="body2" sx={{ mt: 1, color: 'white' }}>
+                      Selected: {formData.video_file.name}
+                    </Typography>
+                  )}
+                  {uploading && (
+                    <Box sx={{ width: '100%', mt: 2 }}>
+                      <LinearProgress variant="determinate" value={uploadProgress} />
+                      <Typography variant="body2" sx={{ mt: 1, color: 'white' }}>
+                        Uploading: {uploadProgress}%
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
               ) : (
                 <TextField
                   fullWidth
                   label={formData.video_source === 'drive' ? 'Google Drive Link' : 'YouTube URL'}
+                  name="video_id"
                   value={formData.video_id}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    if (formData.video_source === 'drive') {
-                      const isValid = validateGoogleDriveLink(value);
-                      setFormData({
-                        ...formData,
-                        video_id: value,
-                        error: !isValid ? 'Invalid Google Drive link' : ''
-                      });
-                    } else {
-                      setFormData({ ...formData, video_id: value });
+                  onChange={(e) => setFormData({ ...formData, video_id: e.target.value })}
+                  required
+                  variant="outlined"
+                  InputLabelProps={{ style: { color: 'white' } }}
+                  sx={{ 
+                    '& .MuiOutlinedInput-root': {
+                      color: 'white',
+                      '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.23)' },
+                      '&:hover fieldset': { borderColor: 'white' },
                     }
                   }}
-                  helperText={
-                    formData.video_source === 'drive' 
-                      ? 'Right-click your video in Google Drive → Share → Copy link'
-                      : ''
-                  }
-                  error={!!formData.error}
                 />
               )}
             </Grid>
@@ -488,23 +519,20 @@ export default function ContentManagement() {
               <Grid item xs={12}>
                 <TextField
                   fullWidth
-                  label="Access Token (for private videos)"
-                  value={formData.access_token || ''}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    access_token: e.target.value
-                  })}
+                  label="Access Token (Optional)"
+                  name="access_token"
+                  value={formData.access_token}
+                  onChange={(e) => setFormData({ ...formData, access_token: e.target.value })}
+                  variant="outlined"
+                  InputLabelProps={{ style: { color: 'white' } }}
+                  sx={{ 
+                    '& .MuiOutlinedInput-root': {
+                      color: 'white',
+                      '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.23)' },
+                      '&:hover fieldset': { borderColor: 'white' },
+                    }
+                  }}
                 />
-              </Grid>
-            )}
-            {uploading && (
-              <Grid item xs={12}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <CircularProgress variant="determinate" value={uploadProgress} />
-                  <Typography variant="body2">
-                    {uploadProgress}% uploaded
-                  </Typography>
-                </Box>
               </Grid>
             )}
             <Grid item xs={12}>
@@ -512,25 +540,27 @@ export default function ContentManagement() {
                 control={
                   <Switch
                     checked={formData.is_free}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      is_free: e.target.checked
-                    })}
+                    onChange={(e) => setFormData({ ...formData, is_free: e.target.checked })}
+                    sx={{ '& .MuiSwitch-switchBase.Mui-checked': { color: '#00ff00' } }}
                   />
                 }
-                label="Free Preview"
+                label="Free Access"
+                sx={{ color: 'white' }}
               />
             </Grid>
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseDialog}>Cancel</Button>
-          <Button 
+          <Button onClick={handleCloseDialog} sx={{ color: 'white' }}>
+            Cancel
+          </Button>
+          <Button
             onClick={handleSubmit}
             variant="contained"
-            disabled={uploading || (formData.video_source === 'drive' && !!formData.error)}
+            color="primary"
+            disabled={uploading}
           >
-            {uploading ? 'Uploading...' : 'Save'}
+            {uploading ? 'Uploading...' : selectedVideo ? 'Update' : 'Upload'}
           </Button>
         </DialogActions>
       </Dialog>

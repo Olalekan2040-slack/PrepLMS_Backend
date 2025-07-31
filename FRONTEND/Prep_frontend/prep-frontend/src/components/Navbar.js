@@ -29,10 +29,10 @@ import { useNavigate } from 'react-router-dom';
 const getMenuItems = (isAuthenticated) => [
   { label: 'Home', link: '/', icon: <HomeIcon /> },
   { label: 'About Prep', link: '/about', icon: <InfoIcon /> },
-  { label: 'Prep Tutor', link: '/tutor', icon: <SchoolIcon /> },
+  { label: 'Prep Tutor', link: '/tutor', icon: <SchoolIcon />, protected: true },
   { label: 'Prep Practice Questions', link: '/practice', icon: <QuizIcon />, comingSoon: true },
-  { label: 'Rewards', link: '/rewards', icon: <EmojiEventsIcon /> },  { label: 'My Account', link: '/account/dashboard', icon: <AccountCircleIcon />, protected: true },
-  { label: 'Donate', link: '/donate', icon: <VolunteerActivismIcon /> },
+  { label: 'Rewards', link: '/rewards', icon: <EmojiEventsIcon />, protected: true },
+  { label: 'My Account', link: '/account/dashboard', icon: <AccountCircleIcon />, protected: true },
   { label: 'Contact/Support', link: '/contact', icon: <ContactSupportIcon /> },
   ...(isAuthenticated
     ? [
@@ -51,9 +51,15 @@ export default function Navbar() {
   const token = localStorage.getItem('access_token');
   const isAuthenticated = Boolean(token);
   const menuItems = getMenuItems(isAuthenticated);
-
-  const handleNavigation = (link) => {
-    navigate(link);
+  const handleNavigation = (item) => {
+    if (item.protected && !isAuthenticated) {
+      // Save the intended destination and redirect to login
+      navigate('/auth', { state: { from: item.link } });
+    } else if (item.comingSoon) {
+      return; // Do nothing for coming soon items
+    } else {
+      navigate(item.link);
+    }
     setDrawerOpen(false);
   };
 

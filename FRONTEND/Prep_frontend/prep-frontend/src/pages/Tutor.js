@@ -20,13 +20,29 @@ import {
 import SearchIcon from '@mui/icons-material/Search';
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
 import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
+import LockIcon from '@mui/icons-material/Lock';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import { contentAPI } from '../api';
 import { useNavigate } from 'react-router-dom';
+import { useSubscription } from '../contexts/SubscriptionContext';
+import { useAuth } from '../contexts/AuthContext';
 
 const classLevels = ['JSS1', 'JSS2', 'JSS3', 'SS1', 'SS2', 'SS3'];
 
 function CourseCard({ course, loading }) {
+  const { subscription } = useSubscription();
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+
+  const handleClick = () => {
+    if (course.is_free || (subscription && subscription.is_active)) {
+      navigate(`/tutor/course/${course.id}`);
+    } else {
+      // Always redirect to subscription plans if not free and not subscribed
+      navigate('/subscription/plans');
+    }
+  };
+
   if (loading) {
     return (
       <Card className="course-card">
@@ -41,6 +57,8 @@ function CourseCard({ course, loading }) {
     );
   }
 
+  const isAccessible = course.is_free || (subscription && subscription.is_active);
+
   return (
     <Card className="course-card">
       <CardMedia
@@ -48,7 +66,31 @@ function CourseCard({ course, loading }) {
         height="180"
         image={course.thumbnail_url || `https://source.unsplash.com/featured/?${course.subject}`}
         alt={course.title}
+        sx={{
+          filter: !isAccessible ? 'brightness(0.7)' : 'none',
+          position: 'relative'
+        }}
       />
+      {!isAccessible && (
+        <Box
+          sx={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            color: 'white',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            padding: '8px 16px',
+            borderRadius: '4px'
+          }}
+        >
+          <LockIcon />
+          <Typography variant="body2">Premium Content</Typography>
+        </Box>
+      )}
       <CardContent>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 1 }}>
           <Typography variant="h6" component="h2" sx={{ fontWeight: 600 }}>
@@ -78,11 +120,18 @@ function CourseCard({ course, loading }) {
               variant="outlined" 
             />
           )}
-          {course.is_free && (
+          {course.is_free ? (
             <Chip 
               label="Free" 
               size="small" 
               color="success" 
+              variant="outlined" 
+            />
+          ) : (
+            <Chip 
+              label="Premium" 
+              size="small" 
+              color="warning" 
               variant="outlined" 
             />
           )}
@@ -95,11 +144,12 @@ function CourseCard({ course, loading }) {
         </Box>
         <Button 
           variant="contained" 
-          startIcon={<PlayCircleOutlineIcon />}
+          startIcon={isAccessible ? <PlayCircleOutlineIcon /> : <LockIcon />}
           fullWidth
-          href={`/tutor/course/${course.id}`}
+          onClick={handleClick}
+          color={isAccessible ? 'primary' : 'secondary'}
         >
-          Start Learning
+          {isAccessible ? 'Start Learning' : 'Get Full Access'}
         </Button>
       </CardContent>
     </Card>

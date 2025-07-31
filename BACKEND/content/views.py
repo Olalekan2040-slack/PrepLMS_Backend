@@ -14,6 +14,7 @@ from .serializers import (
 )
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.views import APIView
+from .permissions import HasActiveSubscriptionOrIsFree
 
 class IsContentAdmin(permissions.BasePermission):
     def has_permission(self, request, view):
@@ -55,8 +56,27 @@ class VideoLessonListView(generics.ListAPIView):
 class VideoLessonDetailView(generics.RetrieveAPIView):
     queryset = VideoLesson.objects.all()
     serializer_class = VideoLessonSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasActiveSubscriptionOrIsFree]
     lookup_field = 'slug'
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        data = serializer.data
+
+        # Add subscription status for premium videos
+        if not instance.is_free:
+            from subscription.models import Subscription
+            has_active_subscription = Subscription.objects.filter(
+                user=request.user,
+                payment_status='completed',
+                start_date__lte=timezone.now(),
+                end_date__gte=timezone.now()
+            ).exists()
+            data['requires_subscription'] = True
+            data['has_active_subscription'] = has_active_subscription
+
+        return Response(data)
 
 class VideoLessonCreateView(generics.CreateAPIView):
     queryset = VideoLesson.objects.all()
@@ -576,14 +596,22 @@ class AdminVideoUploadView(generics.CreateAPIView):
             # Create a mutable copy of request.data
             data = request.data.copy()
             
-            # Handle file upload
-            if data.get('video_source') == 'file':
-                if 'video_file' not in request.FILES:
-                    return Response(
-                        {'video_file': 'No video file uploaded.'},
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
+            # Handle video source
+            video_source = data.get('video_source')
+            if video_source == 'file' and 'video_file' in request.FILES:
+                # Handle file upload
                 data['video_file'] = request.FILES['video_file']
+            elif video_source == 'youtube':
+                # Handle YouTube URL
+                youtube_url = data.get('video_id')
+                if youtube_url:
+                    video_id = self.extract_youtube_id(youtube_url)
+                    if not video_id:
+                        return Response(
+                            {'error': 'Invalid YouTube URL'},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+                    data['video_id'] = video_id
             
             # Create serializer with the data
             serializer = self.get_serializer(data=data)

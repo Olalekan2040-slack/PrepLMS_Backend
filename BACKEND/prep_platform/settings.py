@@ -43,18 +43,17 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-     # Third-party apps
+    # Third-party apps
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
     'storages',  # Add django-storages
-    
     # Local apps
-    'core',
     'users',
     'content',
-    'subscription',
-    'rewards',
+    'core',
+    'subscription',  # Add subscription app
+    'rewards',  # Add rewards app
 ]
 
 # CORS settings
@@ -210,3 +209,13 @@ else:
     MEDIA_URL = '/media/'
     MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
     STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# Flutterwave settings
+FLUTTERWAVE_PUBLIC_KEY = config('FLUTTERWAVE_PUBLIC_KEY', default='')
+FLUTTERWAVE_SECRET_KEY = config('FLUTTERWAVE_SECRET_KEY', default='')
+FLUTTERWAVE_WEBHOOK_HASH = config('FLUTTERWAVE_WEBHOOK_HASH', default='')
+
+# Subscription Settings
+SUBSCRIPTION_PRICE = 5000  # Amount in smallest currency unit (e.g., kobo for NGN)
+SUBSCRIPTION_CURRENCY = 'NGN'  # Nigerian Naira
+SUBSCRIPTION_DURATION = timedelta(days=30)  # One month subscription

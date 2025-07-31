@@ -18,6 +18,8 @@ import {
   Paper,
   LinearProgress,
   Snackbar,
+  Card,
+  CardContent,
 } from '@mui/material';
 import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
@@ -26,6 +28,8 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import LockIcon from '@mui/icons-material/Lock';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { contentAPI, progressAPI } from '../api';
+import { useSubscription } from '../contexts/SubscriptionContext';
+import { useAuth } from '../contexts/AuthContext';
 
 function VideoListItem({ video, onSelect, isLocked, progress }) {
   return (
@@ -38,6 +42,7 @@ function VideoListItem({ video, onSelect, isLocked, progress }) {
         '&:hover': {
           bgcolor: 'rgba(113, 75, 103, 0.1)',
         },
+        opacity: isLocked ? 0.7 : 1,
       }}
     >
       <ListItemIcon>
@@ -50,34 +55,52 @@ function VideoListItem({ video, onSelect, isLocked, progress }) {
       <ListItemText
         primary={video.title}
         secondary={
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <AccessTimeIcon sx={{ fontSize: 14 }} />
-              <Typography variant="body2" color="text.secondary">
-                {video.duration || '10 mins'}
-              </Typography>
-            </Box>
-            {progress > 0 && (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+              {video.duration} mins
+            </Typography>
+            {video.is_free && (
+              <Chip 
+                label="Free" 
+                size="small" 
+                color="success" 
+                variant="outlined" 
+              />
+            )}
+            {progress && (
               <LinearProgress 
                 variant="determinate" 
                 value={progress} 
-                sx={{ height: 4, borderRadius: 2 }}
+                sx={{ width: '100px', ml: 2 }} 
               />
             )}
           </Box>
         }
-        sx={{ opacity: isLocked ? 0.6 : 1 }}
       />
-      {video.is_free && (
-        <Chip 
-          label="Free" 
-          size="small" 
-          color="success" 
-          variant="outlined" 
-          sx={{ ml: 1 }} 
-        />
-      )}
     </ListItem>
+  );
+}
+
+function SubscriptionPrompt({ onSubscribe }) {
+  return (
+    <Card sx={{ mt: 3, bgcolor: 'primary.light', color: 'white' }}>
+      <CardContent>
+        <Typography variant="h6" gutterBottom>
+          Get Full Access to Premium Content
+        </Typography>
+        <Typography variant="body1" paragraph>
+          Subscribe to unlock all premium videos and enhance your learning experience.
+        </Typography>
+        <Button
+          variant="contained"
+          color="secondary"
+          onClick={onSubscribe}
+          sx={{ mt: 1 }}
+        >
+          View Subscription Plans
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -98,6 +121,10 @@ export default function CourseDetail() {
   const videoRef = useRef(null);
   const progressInterval = useRef(null);
   const token = localStorage.getItem('access_token');
+  const { subscription } = useSubscription();
+  const { isAuthenticated } = useAuth();
+  
+  const canAccessPremium = subscription && subscription.is_active;
 
   useEffect(() => {
     const fetchCourseAndVideos = async () => {
@@ -202,9 +229,13 @@ export default function CourseDetail() {
     }
   }, [token, selectedVideo, videoRef]);
 
-  const handleVideoSelect = async (video) => {
-    setSelectedVideo(video);
-    await loadVideoProgress(video);
+  const handleVideoSelect = (video) => {
+    if (video.is_free || canAccessPremium) {
+      setSelectedVideo(video);
+    } else {
+      // Directly navigate to subscription plans
+      navigate('/subscription/plans');
+    }
   };
 
   const loadVideoProgress = async (video) => {
@@ -220,6 +251,10 @@ export default function CourseDetail() {
     } catch (error) {
       console.error('Failed to load video progress:', error);
     }
+  };
+
+  const isVideoLocked = (video) => {
+    return !video.is_free && !canAccessPremium;
   };
 
   // Set up auto-save interval when a video is selected
@@ -385,8 +420,8 @@ export default function CourseDetail() {
                   <VideoListItem
                     key={video.id}
                     video={video}
-                    onSelect={() => handleVideoSelect(video)}
-                    isLocked={!video.is_free}
+                    onSelect={handleVideoSelect}
+                    isLocked={isVideoLocked(video)}
                     progress={videoProgress[video.id] || 0}
                   />
                 ))}
@@ -394,6 +429,11 @@ export default function CourseDetail() {
             </Paper>
           </Grid>
         </Grid>
+
+        {/* Add subscription prompt for non-subscribers */}
+        {!canAccessPremium && (
+          <SubscriptionPrompt onSubscribe={() => navigate('/subscription/plans')} />
+        )}
       </Container>
 
       <Snackbar
